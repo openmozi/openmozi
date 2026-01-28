@@ -31,8 +31,8 @@ const logger = getChildLogger("websocket");
 interface WsClient {
   id: string;
   ws: WebSocket;
-  sessionKey: string;
-  sessionId: string;
+  sessionKey: string | null;  // null 表示尚未绑定 session
+  sessionId: string | null;
   lastPing: number;
 }
 
@@ -73,28 +73,22 @@ export class WsServer {
   /** 处理新连接 */
   private async handleConnection(ws: WebSocket): Promise<void> {
     const clientId = generateId("client");
-    const sessionKey = `webchat:${clientId}`;
 
-    // 从会话存储获取或创建会话
-    const store = getSessionStore();
-    const session = await store.getOrCreate(sessionKey);
-
+    // 不立即创建 session，等待客户端发送 sessions.restore 或 chat.send 时再创建
     const client: WsClient = {
       id: clientId,
       ws,
-      sessionKey,
-      sessionId: session.sessionId,
+      sessionKey: null,
+      sessionId: null,
       lastPing: Date.now(),
     };
 
     this.clients.set(clientId, client);
-    logger.info({ clientId, sessionKey, sessionId: session.sessionId }, "Client connected");
+    logger.info({ clientId }, "Client connected");
 
-    // 发送欢迎消息
+    // 发送欢迎消息 - 不包含 session 信息，等待客户端决定
     this.sendEvent(ws, "connected", {
       clientId,
-      sessionKey,
-      sessionId: session.sessionId,
       version: "1.0.0",
     });
 
@@ -184,11 +178,30 @@ export class WsServer {
     }
   }
 
+  /** 确保客户端有 session，如果没有则创建 */
+  private async ensureSession(client: WsClient): Promise<void> {
+    if (client.sessionKey && client.sessionId) {
+      return;
+    }
+
+    const store = getSessionStore();
+    const sessionKey = `webchat:${client.id}`;
+    const session = await store.getOrCreate(sessionKey);
+
+    client.sessionKey = sessionKey;
+    client.sessionId = session.sessionId;
+
+    logger.info({ clientId: client.id, sessionKey, sessionId: session.sessionId }, "Session created");
+  }
+
   /** 处理聊天发送 */
   private async handleChatSend(
     client: WsClient,
     params: ChatSendParams
   ): Promise<{ messageId: string }> {
+    // 确保有 session
+    await this.ensureSession(client);
+
     const { message } = params;
     const messageId = generateId("msg");
     const store = getSessionStore();
@@ -202,12 +215,12 @@ export class WsServer {
       content: message,
       timestamp: Date.now(),
     };
-    await store.appendTranscript(client.sessionId, client.sessionKey, userMessage);
+    await store.appendTranscript(client.sessionId!, client.sessionKey!, userMessage);
 
     // 构造消息上下文
     const context = {
       channelId: "webchat" as const,
-      chatId: client.sessionKey,
+      chatId: client.sessionKey!,
       messageId,
       senderId: client.id,
       senderName: "WebChat User",
@@ -237,7 +250,7 @@ export class WsServer {
         content: fullContent,
         timestamp: Date.now(),
       };
-      await store.appendTranscript(client.sessionId, client.sessionKey, assistantMessage);
+      await store.appendTranscript(client.sessionId!, client.sessionKey!, assistantMessage);
 
       // 发送完成事件
       this.sendEvent(client.ws, "chat.delta", {
@@ -258,10 +271,13 @@ export class WsServer {
 
   /** 处理清除会话 */
   private async handleChatClear(client: WsClient): Promise<{ success: boolean; sessionKey: string; sessionId: string }> {
+    // 确保有 session
+    await this.ensureSession(client);
+
     const store = getSessionStore();
 
     // 重置会话
-    const newSession = await store.reset(client.sessionKey);
+    const newSession = await store.reset(client.sessionKey!);
 
     // 更新客户端会话 ID
     client.sessionId = newSession.sessionId;
@@ -269,7 +285,7 @@ export class WsServer {
     // 清除 Agent 中的会话
     const context = {
       channelId: "webchat" as const,
-      chatId: client.sessionKey,
+      chatId: client.sessionKey!,
       messageId: generateId("msg"),
       senderId: client.id,
       senderName: "WebChat User",
@@ -282,7 +298,7 @@ export class WsServer {
 
     return {
       success: true,
-      sessionKey: client.sessionKey,
+      sessionKey: client.sessionKey!,
       sessionId: newSession.sessionId,
     };
   }
@@ -380,7 +396,7 @@ export class WsServer {
   private getSessionInfo(client: WsClient): unknown {
     const context = {
       channelId: "webchat" as const,
-      chatId: client.sessionKey,
+      chatId: client.sessionKey || `webchat:${client.id}`,
       messageId: "",
       senderId: client.id,
       senderName: "",

@@ -241,6 +241,8 @@ export function loadConfig(options?: { configPath?: string }): MoziConfig {
   const configPaths = options?.configPath
     ? [options.configPath]
     : [
+        join(process.cwd(), "config.local.json5"),
+        join(process.cwd(), "config.local.json"),
         join(process.cwd(), "config.json5"),
         join(process.cwd(), "config.json"),
         join(process.cwd(), "config.yaml"),

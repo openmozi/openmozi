@@ -345,11 +345,7 @@ function getEmbeddedHtml(config: MoziConfig): string {
         statusDot.classList.remove('disconnected');
         statusText.textContent = '已连接';
         sessionRestored = false;
-        const savedSessionKey = getSavedSessionKey();
-        if (savedSessionKey) {
-          restoreSession(savedSessionKey);
-        }
-        loadSessionList();
+        // 注意：不在此处加载数据，等待服务器发送 connected 事件后再操作
       };
 
       ws.onclose = () => {
@@ -521,11 +517,16 @@ function getEmbeddedHtml(config: MoziConfig): string {
 
     function handleEvent(event, payload) {
       if (event === 'connected') {
-        console.log('Session:', payload.sessionKey, payload.sessionId);
-        // 只有在没有保存的 sessionKey 且还未恢复会话时才保存新的
-        if (!getSavedSessionKey() && sessionRestored) {
-          saveSessionKey(payload.sessionKey);
+        console.log('Connected, clientId:', payload.clientId);
+        // 服务器准备好了，现在加载数据
+        const savedSessionKey = getSavedSessionKey();
+        if (savedSessionKey) {
+          restoreSession(savedSessionKey);
+        } else {
+          // 没有保存的 session，等第一次发消息时服务器会自动创建
+          sessionRestored = true;
         }
+        loadSessionList();
       } else if (event === 'chat.delta') {
         if (!isStreaming) {
           isStreaming = true;
