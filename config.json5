@@ -1,8 +1,35 @@
 {
   // Mozi 配置文件
+  providers: {
+    // 使用 claude-code-router 作为 Anthropic 兼容提供商
+    "custom-anthropic": {
+      id: "custom-anthropic",
+      name: "Claude Code Router",
+      baseUrl: "http://localhost:3456/v1",
+      apiKey: "placeholder",
+      apiVersion: "2023-06-01",
+      models: [
+        {
+          id: "claude-opus-4-5",
+          name: "Claude Opus 4.5",
+          contextWindow: 200000,
+          maxTokens: 16384,
+          supportsVision: false
+        }
+      ]
+    }
+  },
+  // 渠道配置
+  channels: {
+    feishu: {
+      appId: "your-feishu-app-id",
+      appSecret: "your-feishu-app-secret",
+      enabled: false
+    }
+  },
   agent: {
-    defaultProvider: "modelscope",
-    defaultModel: "Qwen/Qwen2.5-7B-Instruct",
+    defaultProvider: "custom-anthropic",
+    defaultModel: "claude-opus-4-5",
     temperature: 0.7,
     maxTokens: 4096
   },
@@ -10,6 +37,6 @@
     port: 3000
   },
   logging: {
-    level: "info"
+    level: "debug"
   }
 }

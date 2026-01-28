@@ -363,7 +363,137 @@ function getEmbeddedHtml(config: MoziConfig): string {
         align-items: center;
       }
     }
+
+    /* Markdown 渲染样式 */
+    .message-content.markdown {
+      white-space: normal;
+    }
+
+    .message-content.markdown h1,
+    .message-content.markdown h2,
+    .message-content.markdown h3,
+    .message-content.markdown h4 {
+      margin: 0.75em 0 0.5em 0;
+      font-weight: 600;
+      line-height: 1.3;
+    }
+
+    .message-content.markdown h1 { font-size: 1.4em; }
+    .message-content.markdown h2 { font-size: 1.25em; }
+    .message-content.markdown h3 { font-size: 1.1em; }
+
+    .message-content.markdown p {
+      margin: 0.5em 0;
+    }
+
+    .message-content.markdown ul,
+    .message-content.markdown ol {
+      margin: 0.5em 0;
+      padding-left: 1.5em;
+    }
+
+    .message-content.markdown li {
+      margin: 0.25em 0;
+    }
+
+    .message-content.markdown pre {
+      background: #1e1e1e;
+      color: #d4d4d4;
+      padding: 1em;
+      border-radius: 0.5em;
+      overflow-x: auto;
+      margin: 0.75em 0;
+      font-family: "SF Mono", Monaco, Consolas, monospace;
+      font-size: 0.9em;
+      line-height: 1.4;
+    }
+
+    .message-content.markdown pre code {
+      background: none;
+      padding: 0;
+      color: inherit;
+      font-size: inherit;
+    }
+
+    .message-content.markdown code {
+      background: rgba(0, 0, 0, 0.08);
+      padding: 0.15em 0.4em;
+      border-radius: 0.25em;
+      font-family: "SF Mono", Monaco, Consolas, monospace;
+      font-size: 0.9em;
+    }
+
+    .message.user .message-content.markdown code {
+      background: rgba(255, 255, 255, 0.15);
+    }
+
+    .message-content.markdown table {
+      border-collapse: collapse;
+      margin: 0.75em 0;
+      width: 100%;
+      font-size: 0.9em;
+    }
+
+    .message-content.markdown th,
+    .message-content.markdown td {
+      border: 1px solid var(--border);
+      padding: 0.5em 0.75em;
+      text-align: left;
+    }
+
+    .message-content.markdown th {
+      background: rgba(0, 0, 0, 0.04);
+      font-weight: 600;
+    }
+
+    .message-content.markdown blockquote {
+      border-left: 3px solid var(--primary);
+      margin: 0.75em 0;
+      padding: 0.5em 1em;
+      background: rgba(0, 0, 0, 0.03);
+    }
+
+    .message-content.markdown hr {
+      border: none;
+      border-top: 1px solid var(--border);
+      margin: 1em 0;
+    }
+
+    .message-content.markdown a {
+      color: var(--primary);
+      text-decoration: none;
+    }
+
+    .message-content.markdown a:hover {
+      text-decoration: underline;
+    }
+
+    .message-content.markdown strong {
+      font-weight: 600;
+    }
+
+    .message-content.markdown em {
+      font-style: italic;
+    }
+
+    /* 工具调用样式 */
+    .tool-call {
+      font-family: "SF Mono", Monaco, Consolas, monospace;
+      font-size: 0.85em;
+      color: var(--text-secondary);
+      margin: 0.25em 0;
+    }
+
+    .tool-call .tool-success {
+      color: #10b981;
+    }
+
+    .tool-call .tool-error {
+      color: #ef4444;
+    }
   </style>
+  <!-- Marked.js for Markdown rendering -->
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 </head>
 <body>
   <header class="header">
@@ -429,6 +559,9 @@ function getEmbeddedHtml(config: MoziConfig): string {
     let requestId = 0;
     let isStreaming = false;
     let currentStreamContent = '';
+    let currentSessionKey = null;
+
+    const STORAGE_KEY = 'mozi_session_key';
 
     const messagesEl = document.getElementById('messages');
     const welcomeEl = document.getElementById('welcome');
@@ -437,6 +570,17 @@ function getEmbeddedHtml(config: MoziConfig): string {
     const clearBtn = document.getElementById('clearBtn');
     const statusDot = document.getElementById('statusDot');
     const statusText = document.getElementById('statusText');
+
+    // 从 localStorage 获取保存的 sessionKey
+    function getSavedSessionKey() {
+      return localStorage.getItem(STORAGE_KEY);
+    }
+
+    // 保存 sessionKey 到 localStorage
+    function saveSessionKey(sessionKey) {
+      localStorage.setItem(STORAGE_KEY, sessionKey);
+      currentSessionKey = sessionKey;
+    }
 
     // 连接 WebSocket
     function connect() {
@@ -447,6 +591,12 @@ function getEmbeddedHtml(config: MoziConfig): string {
         statusDot.classList.remove('disconnected');
         statusText.textContent = '已连接';
         console.log('WebSocket connected');
+
+        // 尝试恢复已保存的会话
+        const savedSessionKey = getSavedSessionKey();
+        if (savedSessionKey) {
+          restoreSession(savedSessionKey);
+        }
       };
 
       ws.onclose = () => {
@@ -471,6 +621,41 @@ function getEmbeddedHtml(config: MoziConfig): string {
       };
     }
 
+    // 恢复会话
+    async function restoreSession(sessionKey) {
+      try {
+        const result = await request('sessions.restore', { sessionKey });
+        if (result && result.messages && result.messages.length > 0) {
+          // 保存新的 sessionKey
+          saveSessionKey(result.sessionKey);
+          // 加载历史消息
+          loadHistoryMessages(result.messages);
+        }
+      } catch (e) {
+        console.log('No previous session found, starting fresh');
+        // 会话不存在，清除保存的 key
+        localStorage.removeItem(STORAGE_KEY);
+      }
+    }
+
+    // 加载历史消息
+    function loadHistoryMessages(messages) {
+      if (!messages || messages.length === 0) return;
+
+      // 隐藏欢迎消息
+      if (welcomeEl) {
+        welcomeEl.style.display = 'none';
+      }
+
+      // 添加历史消息
+      for (const msg of messages) {
+        if (msg.role === 'user' || msg.role === 'assistant') {
+          const content = typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content);
+          addMessage(msg.role, content, false);
+        }
+      }
+    }
+
     // 处理消息帧
     function handleFrame(frame) {
       if (frame.type === 'res') {
@@ -491,7 +676,11 @@ function getEmbeddedHtml(config: MoziConfig): string {
     // 处理事件
     function handleEvent(event, payload) {
       if (event === 'connected') {
-        console.log('Session:', payload.sessionId);
+        console.log('Session:', payload.sessionKey, payload.sessionId);
+        // 如果没有保存的 sessionKey，保存新的
+        if (!getSavedSessionKey()) {
+          saveSessionKey(payload.sessionKey);
+        }
       } else if (event === 'chat.delta') {
         if (!isStreaming) {
           isStreaming = true;
@@ -528,6 +717,19 @@ function getEmbeddedHtml(config: MoziConfig): string {
       });
     }
 
+    // 渲染 Markdown (assistant) 或纯文本 (user)
+    function renderContent(content, isAssistant = false) {
+      if (isAssistant && typeof marked !== 'undefined') {
+        // 配置 marked
+        marked.setOptions({
+          breaks: true,  // 支持换行
+          gfm: true,     // GitHub Flavored Markdown
+        });
+        return marked.parse(content);
+      }
+      return escapeHtml(content);
+    }
+
     // 添加消息
     function addMessage(role, content, streaming = false) {
       if (welcomeEl) {
@@ -541,10 +743,12 @@ function getEmbeddedHtml(config: MoziConfig): string {
       }
 
       const avatar = role === 'user' ? '👤' : '🐼';
+      const isAssistant = role === 'assistant';
+      const contentClass = isAssistant ? 'message-content markdown' : 'message-content';
 
       msgEl.innerHTML = \`
         <div class="message-avatar">\${avatar}</div>
-        <div class="message-content">\${streaming ? '<div class="typing"><span></span><span></span><span></span></div>' : escapeHtml(content)}</div>
+        <div class="\${contentClass}">\${streaming ? '<div class="typing"><span></span><span></span><span></span></div>' : renderContent(content, isAssistant)}</div>
       \`;
 
       messagesEl.appendChild(msgEl);
@@ -556,7 +760,9 @@ function getEmbeddedHtml(config: MoziConfig): string {
       const msgEl = document.getElementById('streaming-message');
       if (msgEl) {
         const contentEl = msgEl.querySelector('.message-content');
-        contentEl.innerHTML = escapeHtml(content);
+        // 流式更新时也用 Markdown 渲染
+        contentEl.innerHTML = renderContent(content, true);
+        contentEl.classList.add('markdown');
         messagesEl.scrollTop = messagesEl.scrollHeight;
       }
     }
@@ -597,7 +803,11 @@ function getEmbeddedHtml(config: MoziConfig): string {
       if (isStreaming) return;
 
       try {
-        await request('chat.clear');
+        const result = await request('chat.clear');
+        // 清除旧的 sessionKey，保存新的
+        if (result && result.sessionKey) {
+          saveSessionKey(result.sessionKey);
+        }
         messagesEl.innerHTML = '';
         if (welcomeEl) {
           messagesEl.appendChild(welcomeEl);

@@ -7,11 +7,17 @@
 /** 支持的模型 API 类型 */
 export type ModelApi =
   | "openai-compatible"      // OpenAI 兼容接口 (DeepSeek, Kimi, Stepfun)
+  | "openai"                 // OpenAI 原生/兼容接口 (自定义)
+  | "anthropic"              // Anthropic 兼容接口 (自定义)
   | "minimax-v1"             // MiniMax 原生接口
   | "anthropic-messages";    // Anthropic 消息接口
 
 /** 模型提供商 ID */
-export type ProviderId = "deepseek" | "minimax" | "kimi" | "stepfun" | "modelscope";
+export type ProviderId =
+  | "deepseek" | "minimax" | "kimi" | "stepfun" | "modelscope"
+  | "openai" | "ollama" | "openrouter" | "together" | "groq"
+  | "azure-openai" | "vllm"
+  | "custom-openai" | "custom-anthropic";
 
 /** 模型定义 */
 export interface ModelDefinition {
@@ -25,7 +31,7 @@ export interface ModelDefinition {
   supportsReasoning: boolean;
   /** 是否支持工具调用 (默认 true) */
   supportsToolCalls?: boolean;
-  cost: {
+  cost?: {
     input: number;   // 每百万 token 成本
     output: number;
     cacheRead?: number;
@@ -270,7 +276,7 @@ export interface MemoryConfig {
 
 /** 主配置 */
 export interface MoziConfig {
-  providers: Partial<Record<ProviderId, SimpleProviderConfig>>;
+  providers: Record<string, SimpleProviderConfig | Record<string, unknown>>;
   channels: {
     feishu?: FeishuConfig;
     dingtalk?: DingtalkConfig;

@@ -2,7 +2,7 @@
  * 飞书通道适配器
  */
 
-import type { Request, Response, Router } from "express";
+import { Router, type Request, type Response } from "express";
 import type {
   FeishuConfig,
   ChannelMeta,
@@ -117,9 +117,7 @@ export class FeishuChannel extends BaseChannelAdapter {
 
   /** 创建 Express 路由处理器 */
   createRouter(): Router {
-    // 动态导入 express 以避免顶层依赖
-    const express = require("express");
-    const router = express.Router();
+    const router = Router();
 
     router.post("/webhook", (req: Request, res: Response) => {
       this.handleWebhook(req, res).catch((error) => {

@@ -209,6 +209,44 @@ function buildBashGuide(): string {
 `;
 }
 
+/** 构建输出格式指南 */
+function buildOutputFormatGuide(): string {
+  return `
+## 输出格式
+
+使用清晰结构化的 Markdown 格式输出，使内容易于阅读：
+
+**格式要点**:
+- 使用 **粗体** 强调关键信息
+- 使用 \`代码\` 标记命令、函数名、文件路径
+- 使用代码块展示代码，并标注语言
+- 复杂信息用表格或列表组织
+- 用分级标题 (## / ###) 组织长内容
+
+**代码块示例**:
+\`\`\`typescript
+function example() {
+  return "hello";
+}
+\`\`\`
+
+**表格示例**:
+| 项目 | 说明 |
+|------|------|
+| 名称 | 值 |
+
+**列表示例**:
+- 第一点
+- 第二点
+  - 子项
+
+**简洁原则**:
+- 直接回答问题，不要过度解释
+- 代码优于描述
+- 避免重复信息
+`;
+}
+
 /** 构建完整系统提示 */
 export function buildSystemPrompt(options: SystemPromptOptions): string {
   const sections: string[] = [];
@@ -231,6 +269,9 @@ export function buildSystemPrompt(options: SystemPromptOptions): string {
     sections.push(buildFileOperationsGuide());
     sections.push(buildBashGuide());
   }
+
+  // 输出格式指南
+  sections.push(buildOutputFormatGuide());
 
   // 额外上下文
   if (options.additionalContext) {

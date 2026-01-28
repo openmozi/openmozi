@@ -14,11 +14,17 @@ import type {
   ChatSendParams,
   ChatDeltaEvent,
   SystemStatus,
+  SessionsListParams,
+  SessionsHistoryParams,
+  SessionsDeleteParams,
+  SessionsResetParams,
+  SessionsRestoreParams,
 } from "./types.js";
 import type { Agent } from "../agents/agent.js";
 import type { MoziConfig } from "../types/index.js";
 import { getAllProviders } from "../providers/index.js";
 import { getAllChannels } from "../channels/index.js";
+import { getSessionStore, type TranscriptMessage } from "../sessions/index.js";
 
 const logger = getChildLogger("websocket");
 
@@ -26,6 +32,7 @@ const logger = getChildLogger("websocket");
 interface WsClient {
   id: string;
   ws: WebSocket;
+  sessionKey: string;
   sessionId: string;
   lastPing: number;
 }
@@ -65,24 +72,30 @@ export class WsServer {
   }
 
   /** 处理新连接 */
-  private handleConnection(ws: WebSocket): void {
+  private async handleConnection(ws: WebSocket): Promise<void> {
     const clientId = generateId("client");
-    const sessionId = generateId("session");
+    const sessionKey = `webchat:${clientId}`;
+
+    // 从会话存储获取或创建会话
+    const store = getSessionStore();
+    const session = await store.getOrCreate(sessionKey);
 
     const client: WsClient = {
       id: clientId,
       ws,
-      sessionId,
+      sessionKey,
+      sessionId: session.sessionId,
       lastPing: Date.now(),
     };
 
     this.clients.set(clientId, client);
-    logger.info({ clientId, sessionId }, "Client connected");
+    logger.info({ clientId, sessionKey, sessionId: session.sessionId }, "Client connected");
 
     // 发送欢迎消息
     this.sendEvent(ws, "connected", {
       clientId,
-      sessionId,
+      sessionKey,
+      sessionId: session.sessionId,
       version: "1.0.0",
     });
 
@@ -134,6 +147,21 @@ export class WsServer {
         case "chat.clear":
           result = await this.handleChatClear(client);
           break;
+        case "sessions.list":
+          result = await this.handleSessionsList(params as SessionsListParams);
+          break;
+        case "sessions.history":
+          result = await this.handleSessionsHistory(params as SessionsHistoryParams);
+          break;
+        case "sessions.delete":
+          result = await this.handleSessionsDelete(params as SessionsDeleteParams);
+          break;
+        case "sessions.reset":
+          result = await this.handleSessionsReset(params as SessionsResetParams);
+          break;
+        case "sessions.restore":
+          result = await this.handleSessionsRestore(client, params as SessionsRestoreParams);
+          break;
         case "status.get":
           result = this.getSystemStatus();
           break;
@@ -164,13 +192,23 @@ export class WsServer {
   ): Promise<{ messageId: string }> {
     const { message } = params;
     const messageId = generateId("msg");
+    const store = getSessionStore();
 
     logger.debug({ clientId: client.id, message: message.slice(0, 100) }, "Chat send");
+
+    // 保存用户消息到 transcript
+    const userMessage: TranscriptMessage = {
+      id: messageId,
+      role: "user",
+      content: message,
+      timestamp: Date.now(),
+    };
+    await store.appendTranscript(client.sessionId, client.sessionKey, userMessage);
 
     // 构造消息上下文
     const context = {
       channelId: "webchat" as const,
-      chatId: client.sessionId,
+      chatId: client.sessionKey,
       messageId,
       senderId: client.id,
       senderName: "WebChat User",
@@ -193,6 +231,15 @@ export class WsServer {
         } as ChatDeltaEvent);
       }
 
+      // 保存助手消息到 transcript
+      const assistantMessage: TranscriptMessage = {
+        id: generateId("msg"),
+        role: "assistant",
+        content: fullContent,
+        timestamp: Date.now(),
+      };
+      await store.appendTranscript(client.sessionId, client.sessionKey, assistantMessage);
+
       // 发送完成事件
       this.sendEvent(client.ws, "chat.delta", {
         sessionId: client.sessionId,
@@ -211,10 +258,19 @@ export class WsServer {
   }
 
   /** 处理清除会话 */
-  private async handleChatClear(client: WsClient): Promise<{ success: boolean }> {
+  private async handleChatClear(client: WsClient): Promise<{ success: boolean; sessionKey: string; sessionId: string }> {
+    const store = getSessionStore();
+
+    // 重置会话
+    const newSession = await store.reset(client.sessionKey);
+
+    // 更新客户端会话 ID
+    client.sessionId = newSession.sessionId;
+
+    // 清除 Agent 中的会话
     const context = {
       channelId: "webchat" as const,
-      chatId: client.sessionId,
+      chatId: client.sessionKey,
       messageId: generateId("msg"),
       senderId: client.id,
       senderName: "WebChat User",
@@ -225,10 +281,77 @@ export class WsServer {
 
     this.agent.clearSession(context);
 
-    // 生成新的会话 ID
-    client.sessionId = generateId("session");
+    return {
+      success: true,
+      sessionKey: client.sessionKey,
+      sessionId: newSession.sessionId,
+    };
+  }
 
+  /** 处理会话列表 */
+  private async handleSessionsList(params?: SessionsListParams): Promise<unknown> {
+    const store = getSessionStore();
+    const sessions = await store.list({
+      limit: params?.limit,
+      activeMinutes: params?.activeMinutes,
+      search: params?.search,
+    });
+    return { sessions };
+  }
+
+  /** 处理获取会话历史 */
+  private async handleSessionsHistory(params: SessionsHistoryParams): Promise<unknown> {
+    const store = getSessionStore();
+    const session = await store.get(params.sessionKey);
+    if (!session) {
+      throw new Error(`Session not found: ${params.sessionKey}`);
+    }
+    const messages = await store.loadTranscript(session.sessionId);
+    return {
+      sessionKey: params.sessionKey,
+      sessionId: session.sessionId,
+      messages,
+    };
+  }
+
+  /** 处理删除会话 */
+  private async handleSessionsDelete(params: SessionsDeleteParams): Promise<{ success: boolean }> {
+    const store = getSessionStore();
+    await store.delete(params.sessionKey);
     return { success: true };
+  }
+
+  /** 处理重置会话 */
+  private async handleSessionsReset(params: SessionsResetParams): Promise<unknown> {
+    const store = getSessionStore();
+    const session = await store.reset(params.sessionKey);
+    return {
+      success: true,
+      sessionKey: session.sessionKey,
+      sessionId: session.sessionId,
+    };
+  }
+
+  /** 处理恢复会话 */
+  private async handleSessionsRestore(client: WsClient, params: SessionsRestoreParams): Promise<unknown> {
+    const store = getSessionStore();
+    const session = await store.get(params.sessionKey);
+    if (!session) {
+      throw new Error(`Session not found: ${params.sessionKey}`);
+    }
+
+    // 更新客户端会话
+    client.sessionKey = session.sessionKey;
+    client.sessionId = session.sessionId;
+
+    // 加载历史消息
+    const messages = await store.loadTranscript(session.sessionId);
+
+    return {
+      sessionKey: session.sessionKey,
+      sessionId: session.sessionId,
+      messages,
+    };
   }
 
   /** 获取系统状态 */
@@ -258,7 +381,7 @@ export class WsServer {
   private getSessionInfo(client: WsClient): unknown {
     const context = {
       channelId: "webchat" as const,
-      chatId: client.sessionId,
+      chatId: client.sessionKey,
       messageId: "",
       senderId: client.id,
       senderName: "",
@@ -269,6 +392,7 @@ export class WsServer {
 
     const info = this.agent.getSessionInfo(context);
     return {
+      sessionKey: client.sessionKey,
       sessionId: client.sessionId,
       ...info,
     };

@@ -44,7 +44,34 @@ export interface ChatMessage {
 /** 聊天请求参数 */
 export interface ChatSendParams {
   message: string;
-  sessionId?: string;
+  sessionKey?: string;
+}
+
+/** 会话列表请求参数 */
+export interface SessionsListParams {
+  limit?: number;
+  activeMinutes?: number;
+  search?: string;
+}
+
+/** 会话历史请求参数 */
+export interface SessionsHistoryParams {
+  sessionKey: string;
+}
+
+/** 会话删除请求参数 */
+export interface SessionsDeleteParams {
+  sessionKey: string;
+}
+
+/** 会话重置请求参数 */
+export interface SessionsResetParams {
+  sessionKey: string;
+}
+
+/** 恢复会话请求参数 */
+export interface SessionsRestoreParams {
+  sessionKey: string;
 }
 
 /** 聊天流事件 */

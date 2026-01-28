@@ -2,7 +2,7 @@
  * 钉钉通道适配器
  */
 
-import type { Request, Response, Router } from "express";
+import { Router, type Request, type Response } from "express";
 import type {
   DingtalkConfig,
   ChannelMeta,
@@ -133,8 +133,7 @@ export class DingtalkChannel extends BaseChannelAdapter {
 
   /** 创建 Express 路由处理器 */
   createRouter(): Router {
-    const express = require("express");
-    const router = express.Router();
+    const router = Router();
 
     router.post("/webhook", (req: Request, res: Response) => {
       this.handleWebhook(req, res).catch((error) => {

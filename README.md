@@ -16,8 +16,9 @@
 
 ## ✨ 特性
 
-### 🤖 支持的国产模型
+### 🤖 支持的模型提供商
 
+**国产模型**:
 | 提供商 | 模型 | 特性 |
 |--------|------|------|
 | **ModelScope** | Qwen2.5-Coder-32B, Qwen3-235B-A22B, QwQ-32B 等 | 阿里云魔搭社区，免费额度，推理能力强 |
@@ -25,6 +26,22 @@
 | **Kimi (Moonshot)** | moonshot-v1-8k/32k/128k, kimi-latest | 长上下文、视觉能力 |
 | **阶跃星辰 (Stepfun)** | step-1-8k/32k/128k/256k, step-1v, step-2 | 超长上下文、多模态 |
 | **MiniMax** | abab6.5s/g/t-chat, MiniMax-Text-01, MiniMax-VL-01 | 语音、视觉能力 |
+
+**OpenAI 兼容格式** (可自定义 API 地址、模型、API Key):
+| 提供商 | 模型 | 特性 |
+|--------|------|------|
+| **OpenAI** | GPT-4o, GPT-4 Turbo, o1 等 | 官方 API |
+| **Ollama** | Llama3, Qwen2.5-Coder, DeepSeek-R1 等 | 本地部署 |
+| **OpenRouter** | Claude, GPT-4, Gemini 等 | 多模型聚合 |
+| **Together AI** | Llama, Qwen, DeepSeek 等 | 高性能推理 |
+| **Groq** | Llama, Mixtral 等 | 超快推理 |
+| **自定义** | 任意兼容模型 | 完全自定义 |
+
+**Anthropic 兼容格式** (可自定义 API 地址、模型、API Key):
+| 提供商 | 模型 | 特性 |
+|--------|------|------|
+| **Anthropic** | Claude 3.5 Sonnet, Claude 3 Opus 等 | 官方 API |
+| **自定义** | 任意兼容模型 | 完全自定义 |
 
 ### 📱 支持的通讯平台
 
@@ -135,13 +152,22 @@ mozi chat --model Qwen2.5-Coder-32B-Instruct --provider modelscope
 创建 `.env` 文件：
 
 ```bash
-# 模型提供商 API Keys (至少配置一个)
+# 国产模型提供商 API Keys (至少配置一个)
 MODELSCOPE_API_KEY=ms-xxx           # 推荐，免费额度
 DEEPSEEK_API_KEY=sk-xxx
 KIMI_API_KEY=sk-xxx
 STEPFUN_API_KEY=ak-xxx
 MINIMAX_API_KEY=xxx
 MINIMAX_GROUP_ID=xxx
+
+# OpenAI 兼容格式提供商 (可选)
+OPENAI_API_KEY=sk-xxx               # OpenAI 官方
+OPENAI_BASE_URL=https://api.openai.com/v1  # 可自定义 API 地址
+OLLAMA_BASE_URL=http://localhost:11434/v1  # Ollama 本地
+OLLAMA_MODELS=llama3.2,qwen2.5-coder       # Ollama 模型列表
+OPENROUTER_API_KEY=sk-xxx           # OpenRouter
+TOGETHER_API_KEY=xxx                # Together AI
+GROQ_API_KEY=xxx                    # Groq
 
 # 飞书配置 (可选)
 FEISHU_APP_ID=cli_xxx
@@ -169,6 +195,7 @@ MOZI_HOST=0.0.0.0
 
 ```yaml
 providers:
+  # 国产模型
   modelscope:
     apiKey: ${MODELSCOPE_API_KEY}
   deepseek:
@@ -180,6 +207,50 @@ providers:
   minimax:
     apiKey: ${MINIMAX_API_KEY}
     groupId: ${MINIMAX_GROUP_ID}
+
+  # OpenAI 兼容格式
+  openai:
+    apiKey: ${OPENAI_API_KEY}
+    baseUrl: https://api.openai.com/v1  # 可自定义
+  ollama:
+    baseUrl: http://localhost:11434/v1
+    models:
+      - llama3.2
+      - qwen2.5-coder
+      - deepseek-r1
+  openrouter:
+    apiKey: ${OPENROUTER_API_KEY}
+  together:
+    apiKey: ${TOGETHER_API_KEY}
+  groq:
+    apiKey: ${GROQ_API_KEY}
+
+  # 自定义 OpenAI 兼容提供商
+  custom-openai:
+    id: my-provider
+    name: My Custom Provider
+    baseUrl: https://my-api.example.com/v1
+    apiKey: ${MY_API_KEY}
+    models:
+      - id: my-model-1
+        name: My Model 1
+        contextWindow: 32768
+        maxTokens: 4096
+        supportsVision: false
+
+  # 自定义 Anthropic 兼容提供商
+  custom-anthropic:
+    id: my-claude
+    name: My Claude Provider
+    baseUrl: https://my-claude-api.example.com
+    apiKey: ${MY_CLAUDE_KEY}
+    apiVersion: "2023-06-01"
+    models:
+      - id: claude-3-sonnet
+        name: Claude 3 Sonnet
+        contextWindow: 200000
+        maxTokens: 8192
+        supportsVision: true
 
 channels:
   feishu:
@@ -359,7 +430,9 @@ src/
 │   ├── deepseek.ts
 │   ├── kimi.ts
 │   ├── stepfun.ts
-│   └── minimax.ts
+│   ├── minimax.ts
+│   ├── custom-openai.ts # OpenAI 兼容格式 (OpenAI/Ollama/OpenRouter 等)
+│   └── anthropic-compatible.ts # Anthropic 兼容格式
 ├── tools/               # 工具系统
 │   ├── builtin/         # 内置工具
 │   │   ├── filesystem.ts
@@ -395,10 +468,13 @@ Mozi 的设计参考了 [Clawdbot](https://github.com/moltbot/moltbot) 的优秀
 | Kimi (Moonshot) | ✅ | ❌ |
 | 阶跃星辰 (Stepfun) | ✅ | ❌ |
 | MiniMax | ✅ | ❌ |
-| Claude (Anthropic) | ❌ | ✅ |
-| GPT (OpenAI) | ❌ | ✅ |
-| Gemini (Google) | ❌ | ✅ |
-| Ollama (本地) | 🔜 计划中 | ✅ |
+| OpenAI (GPT-4o 等) | ✅ 兼容格式 | ✅ |
+| Claude (Anthropic) | ✅ 兼容格式 | ✅ |
+| Ollama (本地) | ✅ | ✅ |
+| OpenRouter | ✅ | ❌ |
+| Together AI | ✅ | ❌ |
+| Groq | ✅ | ❌ |
+| 自定义 API | ✅ OpenAI/Anthropic 格式 | ❌ |
 
 ### 通道支持对比
 

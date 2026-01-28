@@ -16,7 +16,7 @@ const ProviderConfigSchema = z.object({
   baseUrl: z.string().optional(),
   apiKey: z.string().optional(),
   headers: z.record(z.string()).optional(),
-});
+}).passthrough();  // 允许额外字段 (如 custom-openai 和 custom-anthropic 的 id, name, models 等)
 
 const FeishuConfigSchema = z.object({
   appId: z.string(),
@@ -35,7 +35,11 @@ const DingtalkConfigSchema = z.object({
 
 const AgentConfigSchema = z.object({
   defaultModel: z.string().default("deepseek-chat"),
-  defaultProvider: z.enum(["deepseek", "minimax", "kimi", "stepfun", "modelscope"]).default("deepseek"),
+  defaultProvider: z.enum([
+    "deepseek", "minimax", "kimi", "stepfun", "modelscope",
+    "openai", "ollama", "openrouter", "together", "groq",
+    "custom-openai", "custom-anthropic"
+  ]).default("deepseek"),
   systemPrompt: z.string().optional(),
   temperature: z.number().min(0).max(2).optional().default(0.7),
   maxTokens: z.number().optional().default(4096),
@@ -114,6 +118,43 @@ function loadConfigFromEnv(): Partial<MoziConfig> {
   const modelscopeKey = getEnvVar("MODELSCOPE_API_KEY") || getEnvVar("DASHSCOPE_API_KEY");
   if (modelscopeKey) {
     providers.modelscope = { apiKey: modelscopeKey };
+  }
+
+  // OpenAI
+  const openaiKey = getEnvVar("OPENAI_API_KEY");
+  if (openaiKey) {
+    providers.openai = {
+      apiKey: openaiKey,
+      baseUrl: getEnvVar("OPENAI_BASE_URL"),
+    };
+  }
+
+  // Ollama
+  const ollamaBaseUrl = getEnvVar("OLLAMA_BASE_URL");
+  const ollamaModels = getEnvVar("OLLAMA_MODELS");
+  if (ollamaBaseUrl || ollamaModels) {
+    providers.ollama = {
+      baseUrl: ollamaBaseUrl,
+      models: ollamaModels?.split(",").map((m) => m.trim()),
+    } as unknown as { apiKey?: string };
+  }
+
+  // OpenRouter
+  const openrouterKey = getEnvVar("OPENROUTER_API_KEY");
+  if (openrouterKey) {
+    providers.openrouter = { apiKey: openrouterKey };
+  }
+
+  // Together AI
+  const togetherKey = getEnvVar("TOGETHER_API_KEY");
+  if (togetherKey) {
+    providers.together = { apiKey: togetherKey };
+  }
+
+  // Groq
+  const groqKey = getEnvVar("GROQ_API_KEY");
+  if (groqKey) {
+    providers.groq = { apiKey: groqKey };
   }
 
   config.providers = providers;

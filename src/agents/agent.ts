@@ -323,6 +323,7 @@ export class Agent {
       // 1. 尾部多余逗号
       // 2. 单引号替换为双引号
       // 3. 未转义的换行符
+      // 4. 多个 JSON 对象拼接在一起 (claude-code-router bug workaround)
       let repaired = argsStr
         .replace(/,\s*}/g, "}")
         .replace(/,\s*]/g, "]")
@@ -334,6 +335,50 @@ export class Agent {
       try {
         return JSON.parse(repaired) as Record<string, unknown>;
       } catch {
+        // 检测是否是多个 JSON 对象拼接在一起（如 {...}{...}）
+        // 这是 claude-code-router 的一个 bug，它会把多个工具调用的参数发送到同一个 content block
+        const multiJsonMatch = repaired.match(/^(\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\})/);
+        if (multiJsonMatch && multiJsonMatch[1]) {
+          const firstJson = multiJsonMatch[1];
+          try {
+            logger.warn(
+              { original: argsStr, extracted: firstJson },
+              "Detected concatenated JSON objects (claude-code-router bug), using first object"
+            );
+            return JSON.parse(firstJson) as Record<string, unknown>;
+          } catch {
+            // 继续尝试其他方法
+          }
+        }
+
+        // 尝试提取第一个完整的 JSON 对象（简单的括号匹配）
+        let depth = 0;
+        let firstJsonEnd = -1;
+        for (let i = 0; i < repaired.length; i++) {
+          if (repaired[i] === "{") depth++;
+          else if (repaired[i] === "}") {
+            depth--;
+            if (depth === 0) {
+              firstJsonEnd = i;
+              break;
+            }
+          }
+        }
+
+        if (firstJsonEnd > 0) {
+          const firstJson = repaired.slice(0, firstJsonEnd + 1);
+          try {
+            const parsed = JSON.parse(firstJson);
+            logger.warn(
+              { original: argsStr, extracted: firstJson },
+              "Extracted first JSON object from concatenated string"
+            );
+            return parsed as Record<string, unknown>;
+          } catch {
+            // 仍然失败
+          }
+        }
+
         logger.error({ argsStr, repaired }, "Failed to parse tool arguments after repair");
         return {};
       }
@@ -351,6 +396,42 @@ export class Agent {
       return `Error: ${content}`;
     }
     return content;
+  }
+
+  /** 获取工具参数预览 (Claude Code 风格) */
+  private getToolArgsPreview(args?: Record<string, unknown>): string {
+    if (!args || Object.keys(args).length === 0) return "";
+
+    // 常见工具的主参数提取
+    const mainArg = args.path ?? args.directory ?? args.command ?? args.query ?? args.pattern ?? args.content;
+    if (typeof mainArg === "string") {
+      const preview = mainArg.replace(/\n/g, " ").trim();
+      return preview.length > 40 ? preview.slice(0, 40) + "…" : preview;
+    }
+
+    // 其他情况显示简化的参数
+    const firstKey = Object.keys(args)[0];
+    if (firstKey) {
+      const firstVal = args[firstKey];
+      if (typeof firstVal === "string") {
+        const preview = firstVal.replace(/\n/g, " ").trim();
+        return preview.length > 30 ? preview.slice(0, 30) + "…" : preview;
+      }
+    }
+
+    return "";
+  }
+
+  /** 获取错误信息预览 */
+  private getErrorPreview(result: ToolCallResult): string {
+    const content = result.result.content
+      .filter((c): c is { type: "text"; text: string } => c.type === "text")
+      .map((c) => c.text)
+      .join(" ");
+
+    // 提取第一行错误信息
+    const firstLine = content.split("\n")[0]?.trim() ?? "Unknown error";
+    return firstLine.length > 50 ? firstLine.slice(0, 50) + "…" : firstLine;
   }
 
   /** 流式处理消息 (支持原生 function calling) */
@@ -377,10 +458,10 @@ export class Agent {
     // 构建请求消息
     let currentMessages = this.buildMessages(history);
 
-    // 获取提供商
-    const provider = this.options.provider
+    // 获取提供商 (先按 provider ID 查找，再按 model ID 查找)
+    const provider = (this.options.provider
       ? getProvider(this.options.provider)
-      : findProviderForModel(this.options.model);
+      : undefined) ?? findProviderForModel(this.options.model);
 
     if (!provider) {
       throw new Error(`No provider found for model: ${this.options.model}`);
@@ -393,7 +474,7 @@ export class Agent {
     // 工具调用循环
     for (let round = 0; round < this.options.maxToolRounds; round++) {
       let roundContent = "";
-      const pendingToolCalls: Map<number, MessageToolCall> = new Map();
+      const pendingToolCalls: Map<string, MessageToolCall> = new Map();
 
       // 构建请求
       const request: ChatCompletionRequest = {
@@ -419,17 +500,20 @@ export class Agent {
         // 处理工具调用增量
         if (chunk.toolCallDeltas) {
           for (const delta of chunk.toolCallDeltas) {
-            let tc = pendingToolCalls.get(delta.index);
+            // 使用 id 作为 key (优先)，fallback 到 index
+            const key = delta.id ?? `idx_${delta.index}`;
+            let tc = pendingToolCalls.get(key);
             if (!tc) {
               tc = {
                 id: delta.id ?? generateId("tc"),
                 type: "function",
                 function: { name: "", arguments: "" },
               };
-              pendingToolCalls.set(delta.index, tc);
+              pendingToolCalls.set(key, tc);
             }
-            if (delta.id) tc.id = delta.id;
-            if (delta.function?.name) tc.function.name += delta.function.name;
+            if (delta.id && tc.id !== delta.id) tc.id = delta.id;
+            // 只在名称为空时设置，避免重复累加
+            if (delta.function?.name && !tc.function.name) tc.function.name = delta.function.name;
             if (delta.function?.arguments) tc.function.arguments += delta.function.arguments;
           }
         }
@@ -472,9 +556,6 @@ export class Agent {
       currentMessages.push(assistantMessage);
       history.messages.push(assistantMessage);
 
-      // 输出工具执行状态
-      yield `\n\n---\n🔧 执行工具调用...\n`;
-
       // 执行工具调用
       const toolCallInputs: ToolCall[] = completedToolCalls.map((tc) => ({
         id: tc.id,
@@ -485,7 +566,7 @@ export class Agent {
       const toolResults = await executeToolCalls(toolCallInputs);
       allToolCalls.push(...toolResults);
 
-      // 添加 tool 消息并输出结果摘要
+      // 添加 tool 消息并输出结果摘要 (Claude Code 风格)
       for (const tr of toolResults) {
         const toolMessage: ChatMessage = {
           role: "tool",
@@ -496,10 +577,17 @@ export class Agent {
         currentMessages.push(toolMessage);
         history.messages.push(toolMessage);
 
-        yield `\n**${tr.name}**: ${tr.isError ? "❌ 失败" : "✅ 成功"}\n`;
+        // 简洁的工具输出格式
+        const argsPreview = this.getToolArgsPreview(toolCallInputs.find(t => t.id === tr.toolCallId)?.arguments);
+        if (tr.isError) {
+          const errorMsg = this.getErrorPreview(tr);
+          yield `\n⏺ ${tr.name}(${argsPreview}) ✗ ${errorMsg}`;
+        } else {
+          yield `\n⏺ ${tr.name}(${argsPreview}) ✓`;
+        }
       }
 
-      yield `\n---\n\n`;
+      yield `\n\n`;
     }
 
     // 估算 token
