@@ -25,7 +25,6 @@ import type { MoziConfig } from "../types/index.js";
 import { getAllProviders } from "../providers/index.js";
 import { getAllChannels } from "../channels/index.js";
 import { getSessionStore, type TranscriptMessage } from "../sessions/index.js";
-
 const logger = getChildLogger("websocket");
 
 /** WebSocket 客户端 */

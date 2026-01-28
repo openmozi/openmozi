@@ -40,12 +40,7 @@ function getEmbeddedHtml(config: MoziConfig): string {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${assistantName} - AI 助手</title>
   <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
-
+    * { margin: 0; padding: 0; box-sizing: border-box; }
     :root {
       --primary: #4f46e5;
       --primary-hover: #4338ca;
@@ -56,18 +51,110 @@ function getEmbeddedHtml(config: MoziConfig): string {
       --border: #e5e7eb;
       --user-bg: #4f46e5;
       --assistant-bg: #f3f4f6;
+      --sidebar-width: 280px;
     }
-
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
       background: var(--bg);
       color: var(--text);
       height: 100vh;
       display: flex;
-      flex-direction: column;
     }
-
-    /* 头部 */
+    /* 侧边栏 */
+    .sidebar {
+      width: var(--sidebar-width);
+      background: var(--bg-card);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+    }
+    .sidebar-header {
+      padding: 1rem;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+    .sidebar-logo { font-size: 1.5rem; }
+    .sidebar-title { font-weight: 600; font-size: 1.125rem; }
+    .new-chat-btn {
+      margin: 1rem;
+      padding: 0.75rem 1rem;
+      background: var(--primary);
+      color: white;
+      border: none;
+      border-radius: 0.5rem;
+      font-size: 0.875rem;
+      font-weight: 500;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      transition: background 0.2s;
+    }
+    .new-chat-btn:hover { background: var(--primary-hover); }
+    .session-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 0.5rem;
+    }
+    .session-item {
+      padding: 0.75rem 1rem;
+      border-radius: 0.5rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      margin-bottom: 0.25rem;
+      transition: background 0.15s;
+    }
+    .session-item:hover { background: var(--bg); }
+    .session-item.active { background: #eef2ff; }
+    .session-icon { font-size: 1rem; opacity: 0.7; }
+    .session-info { flex: 1; min-width: 0; }
+    .session-title {
+      font-size: 0.875rem;
+      font-weight: 500;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .session-meta {
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+      display: flex;
+      gap: 0.5rem;
+    }
+    .session-delete {
+      opacity: 0;
+      padding: 0.25rem;
+      border: none;
+      background: none;
+      cursor: pointer;
+      font-size: 0.875rem;
+      color: var(--text-secondary);
+      border-radius: 0.25rem;
+    }
+    .session-item:hover .session-delete { opacity: 1; }
+    .session-delete:hover { background: #fee2e2; color: #dc2626; }
+    .sidebar-footer {
+      padding: 0.75rem 1rem;
+      border-top: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+    }
+    /* 主内容区 */
+    .main-container {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+    }
     .header {
       background: var(--bg-card);
       border-bottom: 1px solid var(--border);
@@ -76,483 +163,144 @@ function getEmbeddedHtml(config: MoziConfig): string {
       align-items: center;
       justify-content: space-between;
     }
-
-    .header-left {
-      display: flex;
-      align-items: center;
-      gap: 0.75rem;
-    }
-
-    .logo {
-      font-size: 1.5rem;
-    }
-
-    .title {
-      font-size: 1.25rem;
-      font-weight: 600;
-    }
-
-    .subtitle {
-      font-size: 0.75rem;
-      color: var(--text-secondary);
-    }
-
-    .status {
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-      font-size: 0.875rem;
-      color: var(--text-secondary);
-    }
-
-    .status-dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      background: #10b981;
-    }
-
-    .status-dot.disconnected {
-      background: #ef4444;
-    }
-
-    /* 主体 */
-    .main {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      max-width: 900px;
-      width: 100%;
-      margin: 0 auto;
-      padding: 1rem;
-      overflow: hidden;
-    }
-
-    /* 消息列表 */
-    .messages {
-      flex: 1;
-      overflow-y: auto;
-      padding: 1rem 0;
-      display: flex;
-      flex-direction: column;
-      gap: 1rem;
-    }
-
-    .message {
-      display: flex;
-      gap: 0.75rem;
-      max-width: 85%;
-    }
-
-    .message.user {
-      align-self: flex-end;
-      flex-direction: row-reverse;
-    }
-
-    .message-avatar {
-      width: 36px;
-      height: 36px;
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 1rem;
-      flex-shrink: 0;
-    }
-
-    .message.user .message-avatar {
-      background: var(--user-bg);
-      color: white;
-    }
-
-    .message.assistant .message-avatar {
-      background: var(--assistant-bg);
-    }
-
-    .message-content {
-      padding: 0.75rem 1rem;
-      border-radius: 1rem;
-      line-height: 1.5;
-      white-space: pre-wrap;
-      word-break: break-word;
-    }
-
-    .message.user .message-content {
-      background: var(--user-bg);
-      color: white;
-      border-bottom-right-radius: 0.25rem;
-    }
-
-    .message.assistant .message-content {
-      background: var(--assistant-bg);
-      border-bottom-left-radius: 0.25rem;
-    }
-
-    .message-content code {
-      background: rgba(0, 0, 0, 0.1);
-      padding: 0.125rem 0.375rem;
-      border-radius: 0.25rem;
-      font-family: "SF Mono", Monaco, monospace;
-      font-size: 0.875em;
-    }
-
-    .message.user .message-content code {
-      background: rgba(255, 255, 255, 0.2);
-    }
-
-    .message-content pre {
-      background: rgba(0, 0, 0, 0.05);
-      padding: 0.75rem;
-      border-radius: 0.5rem;
-      overflow-x: auto;
-      margin: 0.5rem 0;
-    }
-
-    .message.user .message-content pre {
-      background: rgba(255, 255, 255, 0.1);
-    }
-
-    .typing {
-      display: flex;
-      gap: 0.25rem;
+    .header-left { display: flex; align-items: center; gap: 0.75rem; }
+    .menu-btn {
+      display: none;
       padding: 0.5rem;
+      border: none;
+      background: none;
+      cursor: pointer;
+      font-size: 1.25rem;
     }
-
-    .typing span {
-      width: 8px;
-      height: 8px;
-      background: var(--text-secondary);
-      border-radius: 50%;
-      animation: typing 1.4s infinite;
-    }
-
+    .title { font-size: 1.25rem; font-weight: 600; }
+    .subtitle { font-size: 0.75rem; color: var(--text-secondary); }
+    .status { display: flex; align-items: center; gap: 0.5rem; font-size: 0.875rem; color: var(--text-secondary); }
+    .status-dot { width: 8px; height: 8px; border-radius: 50%; background: #10b981; }
+    .status-dot.disconnected { background: #ef4444; }
+    .main { flex: 1; display: flex; flex-direction: column; max-width: 900px; width: 100%; margin: 0 auto; padding: 1rem; overflow: hidden; }
+    .messages { flex: 1; overflow-y: auto; padding: 1rem 0; display: flex; flex-direction: column; gap: 1rem; }
+    .message { display: flex; gap: 0.75rem; max-width: 85%; }
+    .message.user { align-self: flex-end; flex-direction: row-reverse; }
+    .message-avatar { width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1rem; flex-shrink: 0; }
+    .message.user .message-avatar { background: var(--user-bg); color: white; }
+    .message.assistant .message-avatar { background: var(--assistant-bg); }
+    .message-content { padding: 0.75rem 1rem; border-radius: 1rem; line-height: 1.5; white-space: pre-wrap; word-break: break-word; }
+    .message.user .message-content { background: var(--user-bg); color: white; border-bottom-right-radius: 0.25rem; }
+    .message.assistant .message-content { background: var(--assistant-bg); border-bottom-left-radius: 0.25rem; }
+    .message-content code { background: rgba(0, 0, 0, 0.1); padding: 0.125rem 0.375rem; border-radius: 0.25rem; font-family: "SF Mono", Monaco, monospace; font-size: 0.875em; }
+    .message.user .message-content code { background: rgba(255, 255, 255, 0.2); }
+    .message-content pre { background: rgba(0, 0, 0, 0.05); padding: 0.75rem; border-radius: 0.5rem; overflow-x: auto; margin: 0.5rem 0; }
+    .message.user .message-content pre { background: rgba(255, 255, 255, 0.1); }
+    .typing { display: flex; gap: 0.25rem; padding: 0.5rem; }
+    .typing span { width: 8px; height: 8px; background: var(--text-secondary); border-radius: 50%; animation: typing 1.4s infinite; }
     .typing span:nth-child(2) { animation-delay: 0.2s; }
     .typing span:nth-child(3) { animation-delay: 0.4s; }
-
-    @keyframes typing {
-      0%, 60%, 100% { transform: translateY(0); }
-      30% { transform: translateY(-4px); }
-    }
-
-    /* 输入区 */
-    .input-area {
-      background: var(--bg-card);
-      border: 1px solid var(--border);
-      border-radius: 1rem;
-      padding: 0.75rem;
-      display: flex;
-      gap: 0.75rem;
-      align-items: flex-end;
-    }
-
-    .input-area textarea {
-      flex: 1;
-      border: none;
-      outline: none;
-      resize: none;
-      font-size: 1rem;
-      line-height: 1.5;
-      max-height: 150px;
-      font-family: inherit;
-      background: transparent;
-    }
-
-    .input-area button {
-      background: var(--primary);
-      color: white;
-      border: none;
-      border-radius: 0.5rem;
-      padding: 0.5rem 1rem;
-      font-size: 0.875rem;
-      font-weight: 500;
-      cursor: pointer;
-      transition: background 0.2s;
-      display: flex;
-      align-items: center;
-      gap: 0.375rem;
-    }
-
-    .input-area button:hover {
-      background: var(--primary-hover);
-    }
-
-    .input-area button:disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
-    }
-
-    .btn-clear {
-      background: transparent !important;
-      color: var(--text-secondary) !important;
-      padding: 0.5rem !important;
-    }
-
-    .btn-clear:hover {
-      color: var(--text) !important;
-      background: var(--bg) !important;
-    }
-
-    /* 欢迎界面 */
-    .welcome {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      text-align: center;
-      gap: 1rem;
-      color: var(--text-secondary);
-    }
-
-    .welcome-icon {
-      font-size: 4rem;
-    }
-
-    .welcome h2 {
-      color: var(--text);
-      font-size: 1.5rem;
-    }
-
-    .welcome p {
-      max-width: 400px;
-    }
-
-    .features {
-      display: flex;
-      gap: 1rem;
-      margin-top: 1rem;
-      flex-wrap: wrap;
-      justify-content: center;
-    }
-
-    .feature {
-      background: var(--bg-card);
-      border: 1px solid var(--border);
-      border-radius: 0.75rem;
-      padding: 1rem;
-      width: 140px;
-      text-align: center;
-    }
-
-    .feature-icon {
-      font-size: 1.5rem;
-      margin-bottom: 0.5rem;
-    }
-
-    .feature-text {
-      font-size: 0.875rem;
-      color: var(--text);
-    }
-
-    /* 响应式 */
-    @media (max-width: 640px) {
-      .header {
-        padding: 0.75rem 1rem;
-      }
-
-      .main {
-        padding: 0.5rem;
-      }
-
-      .message {
-        max-width: 95%;
-      }
-
-      .features {
-        flex-direction: column;
-        align-items: center;
-      }
-    }
-
-    /* Markdown 渲染样式 */
-    .message-content.markdown {
-      white-space: normal;
-    }
-
-    .message-content.markdown h1,
-    .message-content.markdown h2,
-    .message-content.markdown h3,
-    .message-content.markdown h4 {
-      margin: 0.75em 0 0.5em 0;
-      font-weight: 600;
-      line-height: 1.3;
-    }
-
+    @keyframes typing { 0%, 60%, 100% { transform: translateY(0); } 30% { transform: translateY(-4px); } }
+    .input-area { background: var(--bg-card); border: 1px solid var(--border); border-radius: 1rem; padding: 0.75rem; display: flex; gap: 0.75rem; align-items: flex-end; }
+    .input-area textarea { flex: 1; border: none; outline: none; resize: none; font-size: 1rem; line-height: 1.5; max-height: 150px; font-family: inherit; background: transparent; }
+    .input-area button { background: var(--primary); color: white; border: none; border-radius: 0.5rem; padding: 0.5rem 1rem; font-size: 0.875rem; font-weight: 500; cursor: pointer; transition: background 0.2s; display: flex; align-items: center; gap: 0.375rem; }
+    .input-area button:hover { background: var(--primary-hover); }
+    .input-area button:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-icon { background: transparent !important; color: var(--text-secondary) !important; padding: 0.5rem !important; }
+    .btn-icon:hover { color: var(--text) !important; background: var(--bg) !important; }
+    .welcome { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 1rem; color: var(--text-secondary); }
+    .welcome-icon { font-size: 4rem; }
+    .welcome h2 { color: var(--text); font-size: 1.5rem; }
+    .welcome p { max-width: 400px; }
+    .features { display: flex; gap: 1rem; margin-top: 1rem; flex-wrap: wrap; justify-content: center; }
+    .feature { background: var(--bg-card); border: 1px solid var(--border); border-radius: 0.75rem; padding: 1rem; width: 140px; text-align: center; }
+    .feature-icon { font-size: 1.5rem; margin-bottom: 0.5rem; }
+    .feature-text { font-size: 0.875rem; color: var(--text); }
+    /* Markdown styles */
+    .message-content.markdown { white-space: normal; }
+    .message-content.markdown h1, .message-content.markdown h2, .message-content.markdown h3, .message-content.markdown h4 { margin: 0.75em 0 0.5em 0; font-weight: 600; line-height: 1.3; }
     .message-content.markdown h1 { font-size: 1.4em; }
     .message-content.markdown h2 { font-size: 1.25em; }
     .message-content.markdown h3 { font-size: 1.1em; }
-
-    .message-content.markdown p {
-      margin: 0.5em 0;
+    .message-content.markdown p { margin: 0.5em 0; }
+    .message-content.markdown ul, .message-content.markdown ol { margin: 0.5em 0; padding-left: 1.5em; }
+    .message-content.markdown li { margin: 0.25em 0; }
+    .message-content.markdown pre { background: #1e1e1e; color: #d4d4d4; padding: 1em; border-radius: 0.5em; overflow-x: auto; margin: 0.75em 0; font-family: "SF Mono", Monaco, Consolas, monospace; font-size: 0.9em; line-height: 1.4; }
+    .message-content.markdown pre code { background: none; padding: 0; color: inherit; font-size: inherit; }
+    .message-content.markdown code { background: rgba(0, 0, 0, 0.08); padding: 0.15em 0.4em; border-radius: 0.25em; font-family: "SF Mono", Monaco, Consolas, monospace; font-size: 0.9em; }
+    .message.user .message-content.markdown code { background: rgba(255, 255, 255, 0.15); }
+    .message-content.markdown table { border-collapse: collapse; margin: 0.75em 0; width: 100%; font-size: 0.9em; }
+    .message-content.markdown th, .message-content.markdown td { border: 1px solid var(--border); padding: 0.5em 0.75em; text-align: left; }
+    .message-content.markdown th { background: rgba(0, 0, 0, 0.04); font-weight: 600; }
+    .message-content.markdown blockquote { border-left: 3px solid var(--primary); margin: 0.75em 0; padding: 0.5em 1em; background: rgba(0, 0, 0, 0.03); }
+    .message-content.markdown hr { border: none; border-top: 1px solid var(--border); margin: 1em 0; }
+    .message-content.markdown a { color: var(--primary); text-decoration: none; }
+    .message-content.markdown a:hover { text-decoration: underline; }
+    .message-content.markdown strong { font-weight: 600; }
+    .message-content.markdown em { font-style: italic; }
+    /* 响应式 */
+    @media (max-width: 768px) {
+      .sidebar { position: fixed; left: -100%; top: 0; bottom: 0; z-index: 100; transition: left 0.3s; }
+      .sidebar.open { left: 0; }
+      .sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.3); z-index: 99; }
+      .sidebar.open + .sidebar-overlay { display: block; }
+      .menu-btn { display: block; }
+      .message { max-width: 95%; }
     }
-
-    .message-content.markdown ul,
-    .message-content.markdown ol {
-      margin: 0.5em 0;
-      padding-left: 1.5em;
-    }
-
-    .message-content.markdown li {
-      margin: 0.25em 0;
-    }
-
-    .message-content.markdown pre {
-      background: #1e1e1e;
-      color: #d4d4d4;
-      padding: 1em;
-      border-radius: 0.5em;
-      overflow-x: auto;
-      margin: 0.75em 0;
-      font-family: "SF Mono", Monaco, Consolas, monospace;
-      font-size: 0.9em;
-      line-height: 1.4;
-    }
-
-    .message-content.markdown pre code {
-      background: none;
-      padding: 0;
-      color: inherit;
-      font-size: inherit;
-    }
-
-    .message-content.markdown code {
-      background: rgba(0, 0, 0, 0.08);
-      padding: 0.15em 0.4em;
-      border-radius: 0.25em;
-      font-family: "SF Mono", Monaco, Consolas, monospace;
-      font-size: 0.9em;
-    }
-
-    .message.user .message-content.markdown code {
-      background: rgba(255, 255, 255, 0.15);
-    }
-
-    .message-content.markdown table {
-      border-collapse: collapse;
-      margin: 0.75em 0;
-      width: 100%;
-      font-size: 0.9em;
-    }
-
-    .message-content.markdown th,
-    .message-content.markdown td {
-      border: 1px solid var(--border);
-      padding: 0.5em 0.75em;
-      text-align: left;
-    }
-
-    .message-content.markdown th {
-      background: rgba(0, 0, 0, 0.04);
-      font-weight: 600;
-    }
-
-    .message-content.markdown blockquote {
-      border-left: 3px solid var(--primary);
-      margin: 0.75em 0;
-      padding: 0.5em 1em;
-      background: rgba(0, 0, 0, 0.03);
-    }
-
-    .message-content.markdown hr {
-      border: none;
-      border-top: 1px solid var(--border);
-      margin: 1em 0;
-    }
-
-    .message-content.markdown a {
-      color: var(--primary);
-      text-decoration: none;
-    }
-
-    .message-content.markdown a:hover {
-      text-decoration: underline;
-    }
-
-    .message-content.markdown strong {
-      font-weight: 600;
-    }
-
-    .message-content.markdown em {
-      font-style: italic;
-    }
-
-    /* 工具调用样式 */
-    .tool-call {
-      font-family: "SF Mono", Monaco, Consolas, monospace;
-      font-size: 0.85em;
-      color: var(--text-secondary);
-      margin: 0.25em 0;
-    }
-
-    .tool-call .tool-success {
-      color: #10b981;
-    }
-
-    .tool-call .tool-error {
-      color: #ef4444;
-    }
+    .empty-sessions { padding: 2rem 1rem; text-align: center; color: var(--text-secondary); font-size: 0.875rem; }
   </style>
-  <!-- Marked.js for Markdown rendering -->
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 </head>
 <body>
-  <header class="header">
-    <div class="header-left">
-      <span class="logo">🐼</span>
-      <div>
-        <div class="title">${assistantName}</div>
-        <div class="subtitle">${defaultProvider} / ${defaultModel}</div>
-      </div>
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <span class="sidebar-logo">🐼</span>
+      <span class="sidebar-title">${assistantName}</span>
     </div>
-    <div class="status">
-      <span class="status-dot" id="statusDot"></span>
-      <span id="statusText">连接中...</span>
+    <button class="new-chat-btn" id="newChatBtn">➕ 新建对话</button>
+    <div class="session-list" id="sessionList">
+      <div class="empty-sessions">暂无历史会话</div>
     </div>
-  </header>
+    <div class="sidebar-footer">
+      <span id="sessionCount">0 个会话</span>
+      <a href="/control" style="color: var(--primary); text-decoration: none;">控制台</a>
+    </div>
+  </aside>
+  <div class="sidebar-overlay" id="sidebarOverlay"></div>
 
-  <main class="main">
-    <div class="messages" id="messages">
-      <div class="welcome" id="welcome">
-        <div class="welcome-icon">🐼</div>
-        <h2>欢迎使用 ${assistantName}</h2>
-        <p>我是一个支持国产模型的智能助手，可以帮助你回答问题、编写代码、分析数据等。</p>
-        <div class="features">
-          <div class="feature">
-            <div class="feature-icon">💬</div>
-            <div class="feature-text">智能对话</div>
-          </div>
-          <div class="feature">
-            <div class="feature-icon">💻</div>
-            <div class="feature-text">代码助手</div>
-          </div>
-          <div class="feature">
-            <div class="feature-icon">📊</div>
-            <div class="feature-text">数据分析</div>
-          </div>
-          <div class="feature">
-            <div class="feature-icon">🔧</div>
-            <div class="feature-text">工具调用</div>
+  <div class="main-container">
+    <header class="header">
+      <div class="header-left">
+        <button class="menu-btn" id="menuBtn">☰</button>
+        <div>
+          <div class="title">${assistantName}</div>
+          <div class="subtitle">${defaultProvider} / ${defaultModel}</div>
+        </div>
+      </div>
+      <div class="status">
+        <span class="status-dot" id="statusDot"></span>
+        <span id="statusText">连接中...</span>
+      </div>
+    </header>
+
+    <main class="main">
+      <div class="messages" id="messages">
+        <div class="welcome" id="welcome">
+          <div class="welcome-icon">🐼</div>
+          <h2>欢迎使用 ${assistantName}</h2>
+          <p>我是一个支持国产模型的智能助手，可以帮助你回答问题、编写代码、分析数据等。</p>
+          <div class="features">
+            <div class="feature"><div class="feature-icon">💬</div><div class="feature-text">智能对话</div></div>
+            <div class="feature"><div class="feature-icon">💻</div><div class="feature-text">代码助手</div></div>
+            <div class="feature"><div class="feature-icon">📊</div><div class="feature-text">数据分析</div></div>
+            <div class="feature"><div class="feature-icon">🔧</div><div class="feature-text">工具调用</div></div>
           </div>
         </div>
       </div>
-    </div>
-
-    <div class="input-area">
-      <textarea
-        id="input"
-        placeholder="输入消息... (Enter 发送, Shift+Enter 换行)"
-        rows="1"
-      ></textarea>
-      <button class="btn-clear" id="clearBtn" title="清除对话">🗑️</button>
-      <button id="sendBtn">
-        <span>发送</span>
-        <span>↵</span>
-      </button>
-    </div>
-  </main>
+      <div class="input-area">
+        <textarea id="input" placeholder="输入消息... (Enter 发送, Shift+Enter 换行)" rows="1"></textarea>
+        <button class="btn-icon" id="clearBtn" title="清除对话">🗑️</button>
+        <button id="sendBtn"><span>发送</span><span>↵</span></button>
+      </div>
+    </main>
+  </div>
 
   <script>
-    // WebSocket 连接
     let ws = null;
     let reconnectTimer = null;
     let pendingRequests = new Map();
@@ -560,9 +308,17 @@ function getEmbeddedHtml(config: MoziConfig): string {
     let isStreaming = false;
     let currentStreamContent = '';
     let currentSessionKey = null;
+    let sessionRestored = false;
+    let allSessions = [];
 
     const STORAGE_KEY = 'mozi_session_key';
 
+    const sidebar = document.getElementById('sidebar');
+    const sidebarOverlay = document.getElementById('sidebarOverlay');
+    const menuBtn = document.getElementById('menuBtn');
+    const sessionList = document.getElementById('sessionList');
+    const sessionCount = document.getElementById('sessionCount');
+    const newChatBtn = document.getElementById('newChatBtn');
     const messagesEl = document.getElementById('messages');
     const welcomeEl = document.getElementById('welcome');
     const inputEl = document.getElementById('input');
@@ -571,18 +327,16 @@ function getEmbeddedHtml(config: MoziConfig): string {
     const statusDot = document.getElementById('statusDot');
     const statusText = document.getElementById('statusText');
 
-    // 从 localStorage 获取保存的 sessionKey
-    function getSavedSessionKey() {
-      return localStorage.getItem(STORAGE_KEY);
+    function getSavedSessionKey() { return localStorage.getItem(STORAGE_KEY); }
+    function saveSessionKey(sessionKey) { localStorage.setItem(STORAGE_KEY, sessionKey); currentSessionKey = sessionKey; }
+
+    function toggleSidebar() {
+      sidebar.classList.toggle('open');
     }
 
-    // 保存 sessionKey 到 localStorage
-    function saveSessionKey(sessionKey) {
-      localStorage.setItem(STORAGE_KEY, sessionKey);
-      currentSessionKey = sessionKey;
-    }
+    menuBtn.addEventListener('click', toggleSidebar);
+    sidebarOverlay.addEventListener('click', toggleSidebar);
 
-    // 连接 WebSocket
     function connect() {
       const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
       ws = new WebSocket(protocol + '//' + location.host + '/ws');
@@ -590,64 +344,160 @@ function getEmbeddedHtml(config: MoziConfig): string {
       ws.onopen = () => {
         statusDot.classList.remove('disconnected');
         statusText.textContent = '已连接';
-        console.log('WebSocket connected');
-
-        // 尝试恢复已保存的会话
+        sessionRestored = false;
         const savedSessionKey = getSavedSessionKey();
         if (savedSessionKey) {
           restoreSession(savedSessionKey);
         }
+        loadSessionList();
       };
 
       ws.onclose = () => {
         statusDot.classList.add('disconnected');
         statusText.textContent = '已断开';
-        console.log('WebSocket disconnected');
-        // 自动重连
         reconnectTimer = setTimeout(connect, 3000);
       };
 
-      ws.onerror = (err) => {
-        console.error('WebSocket error:', err);
-      };
-
+      ws.onerror = (err) => { console.error('WebSocket error:', err); };
       ws.onmessage = (event) => {
         try {
           const frame = JSON.parse(event.data);
           handleFrame(frame);
-        } catch (e) {
-          console.error('Failed to parse message:', e);
-        }
+        } catch (e) { console.error('Failed to parse message:', e); }
       };
     }
 
-    // 恢复会话
     async function restoreSession(sessionKey) {
       try {
         const result = await request('sessions.restore', { sessionKey });
-        if (result && result.messages && result.messages.length > 0) {
-          // 保存新的 sessionKey
+        sessionRestored = true;
+        if (result && result.sessionKey) {
           saveSessionKey(result.sessionKey);
-          // 加载历史消息
+        }
+        if (result && result.messages && result.messages.length > 0) {
           loadHistoryMessages(result.messages);
         }
+        updateSessionListActive();
       } catch (e) {
         console.log('No previous session found, starting fresh');
-        // 会话不存在，清除保存的 key
         localStorage.removeItem(STORAGE_KEY);
+        sessionRestored = true;
       }
     }
 
-    // 加载历史消息
-    function loadHistoryMessages(messages) {
-      if (!messages || messages.length === 0) return;
+    async function loadSessionList() {
+      try {
+        const result = await request('sessions.list', { limit: 50 });
+        allSessions = result.sessions || [];
+        renderSessionList();
+      } catch (e) { console.error('Failed to load sessions:', e); }
+    }
 
-      // 隐藏欢迎消息
-      if (welcomeEl) {
-        welcomeEl.style.display = 'none';
+    function renderSessionList() {
+      // 过滤掉没有消息的空会话
+      const sessionsWithMessages = allSessions.filter(s => (s.messageCount || 0) > 0);
+
+      if (sessionsWithMessages.length === 0) {
+        sessionList.innerHTML = '<div class="empty-sessions">暂无历史会话</div>';
+        sessionCount.textContent = '0 个会话';
+        return;
       }
 
-      // 添加历史消息
+      sessionCount.textContent = sessionsWithMessages.length + ' 个会话';
+      const currentKey = getSavedSessionKey();
+
+      sessionList.innerHTML = sessionsWithMessages.map(s => {
+        const isActive = s.sessionKey === currentKey;
+        const title = s.label || s.sessionKey.replace(/^webchat:/, '').slice(0, 12) + '...';
+        const time = new Date(s.updatedAt).toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' });
+        const msgCount = s.messageCount || 0;
+        return \`
+          <div class="session-item \${isActive ? 'active' : ''}" data-key="\${s.sessionKey}">
+            <span class="session-icon">💬</span>
+            <div class="session-info">
+              <div class="session-title">\${escapeHtml(title)}</div>
+              <div class="session-meta"><span>\${msgCount} 条消息</span><span>\${time}</span></div>
+            </div>
+            <button class="session-delete" data-key="\${s.sessionKey}" title="删除">🗑️</button>
+          </div>
+        \`;
+      }).join('');
+
+      sessionList.querySelectorAll('.session-item').forEach(el => {
+        el.addEventListener('click', (e) => {
+          if (e.target.classList.contains('session-delete')) return;
+          switchToSession(el.dataset.key);
+        });
+      });
+
+      sessionList.querySelectorAll('.session-delete').forEach(el => {
+        el.addEventListener('click', (e) => {
+          e.stopPropagation();
+          deleteSession(el.dataset.key);
+        });
+      });
+    }
+
+    function updateSessionListActive() {
+      const currentKey = getSavedSessionKey();
+      sessionList.querySelectorAll('.session-item').forEach(el => {
+        el.classList.toggle('active', el.dataset.key === currentKey);
+      });
+    }
+
+    async function switchToSession(sessionKey) {
+      if (isStreaming) return;
+      clearMessagesUI();
+      saveSessionKey(sessionKey);
+      try {
+        const result = await request('sessions.restore', { sessionKey });
+        if (result && result.messages && result.messages.length > 0) {
+          loadHistoryMessages(result.messages);
+        }
+        updateSessionListActive();
+        if (window.innerWidth <= 768) toggleSidebar();
+      } catch (e) {
+        console.error('Failed to switch session:', e);
+      }
+    }
+
+    async function deleteSession(sessionKey) {
+      if (!confirm('确定要删除这个会话吗？')) return;
+      try {
+        await request('sessions.delete', { sessionKey });
+        if (getSavedSessionKey() === sessionKey) {
+          localStorage.removeItem(STORAGE_KEY);
+          clearMessagesUI();
+          showWelcome();
+        }
+        loadSessionList();
+      } catch (e) { console.error('Failed to delete session:', e); }
+    }
+
+    async function createNewChat() {
+      if (isStreaming) return;
+      localStorage.removeItem(STORAGE_KEY);
+      clearMessagesUI();
+      showWelcome();
+      currentSessionKey = null;
+      loadSessionList();
+      if (window.innerWidth <= 768) toggleSidebar();
+    }
+
+    newChatBtn.addEventListener('click', createNewChat);
+
+    function clearMessagesUI() {
+      const msgs = messagesEl.querySelectorAll('.message');
+      msgs.forEach(m => m.remove());
+    }
+
+    function showWelcome() {
+      if (welcomeEl) welcomeEl.style.display = 'flex';
+    }
+
+    function loadHistoryMessages(messages) {
+      if (!messages || messages.length === 0) return;
+      if (welcomeEl) welcomeEl.style.display = 'none';
       for (const msg of messages) {
         if (msg.role === 'user' || msg.role === 'assistant') {
           const content = typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content);
@@ -656,29 +506,24 @@ function getEmbeddedHtml(config: MoziConfig): string {
       }
     }
 
-    // 处理消息帧
     function handleFrame(frame) {
       if (frame.type === 'res') {
         const pending = pendingRequests.get(frame.id);
         if (pending) {
           pendingRequests.delete(frame.id);
-          if (frame.ok) {
-            pending.resolve(frame.payload);
-          } else {
-            pending.reject(new Error(frame.error?.message || 'Unknown error'));
-          }
+          if (frame.ok) pending.resolve(frame.payload);
+          else pending.reject(new Error(frame.error?.message || 'Unknown error'));
         }
       } else if (frame.type === 'event') {
         handleEvent(frame.event, frame.payload);
       }
     }
 
-    // 处理事件
     function handleEvent(event, payload) {
       if (event === 'connected') {
         console.log('Session:', payload.sessionKey, payload.sessionId);
-        // 如果没有保存的 sessionKey，保存新的
-        if (!getSavedSessionKey()) {
+        // 只有在没有保存的 sessionKey 且还未恢复会话时才保存新的
+        if (!getSavedSessionKey() && sessionRestored) {
           saveSessionKey(payload.sessionKey);
         }
       } else if (event === 'chat.delta') {
@@ -687,15 +532,14 @@ function getEmbeddedHtml(config: MoziConfig): string {
           currentStreamContent = '';
           addMessage('assistant', '', true);
         }
-
         if (payload.delta) {
           currentStreamContent += payload.delta;
           updateStreamingMessage(currentStreamContent);
         }
-
         if (payload.done) {
           isStreaming = false;
           finalizeStreamingMessage();
+          loadSessionList();
         }
       } else if (event === 'chat.error') {
         isStreaming = false;
@@ -703,94 +547,62 @@ function getEmbeddedHtml(config: MoziConfig): string {
       }
     }
 
-    // 发送请求
     function request(method, params) {
       return new Promise((resolve, reject) => {
         const id = String(++requestId);
         pendingRequests.set(id, { resolve, reject });
-        ws.send(JSON.stringify({
-          type: 'req',
-          id,
-          method,
-          params
-        }));
+        ws.send(JSON.stringify({ type: 'req', id, method, params }));
       });
     }
 
-    // 渲染 Markdown (assistant) 或纯文本 (user)
     function renderContent(content, isAssistant = false) {
       if (isAssistant && typeof marked !== 'undefined') {
-        // 配置 marked
-        marked.setOptions({
-          breaks: true,  // 支持换行
-          gfm: true,     // GitHub Flavored Markdown
-        });
+        marked.setOptions({ breaks: true, gfm: true });
         return marked.parse(content);
       }
       return escapeHtml(content);
     }
 
-    // 添加消息
     function addMessage(role, content, streaming = false) {
-      if (welcomeEl) {
-        welcomeEl.style.display = 'none';
-      }
-
+      if (welcomeEl) welcomeEl.style.display = 'none';
       const msgEl = document.createElement('div');
       msgEl.className = 'message ' + role;
-      if (streaming) {
-        msgEl.id = 'streaming-message';
-      }
-
+      if (streaming) msgEl.id = 'streaming-message';
       const avatar = role === 'user' ? '👤' : '🐼';
       const isAssistant = role === 'assistant';
       const contentClass = isAssistant ? 'message-content markdown' : 'message-content';
-
-      msgEl.innerHTML = \`
-        <div class="message-avatar">\${avatar}</div>
-        <div class="\${contentClass}">\${streaming ? '<div class="typing"><span></span><span></span><span></span></div>' : renderContent(content, isAssistant)}</div>
-      \`;
-
+      msgEl.innerHTML = \`<div class="message-avatar">\${avatar}</div><div class="\${contentClass}">\${streaming ? '<div class="typing"><span></span><span></span><span></span></div>' : renderContent(content, isAssistant)}</div>\`;
       messagesEl.appendChild(msgEl);
       messagesEl.scrollTop = messagesEl.scrollHeight;
     }
 
-    // 更新流式消息
     function updateStreamingMessage(content) {
       const msgEl = document.getElementById('streaming-message');
       if (msgEl) {
         const contentEl = msgEl.querySelector('.message-content');
-        // 流式更新时也用 Markdown 渲染
         contentEl.innerHTML = renderContent(content, true);
         contentEl.classList.add('markdown');
         messagesEl.scrollTop = messagesEl.scrollHeight;
       }
     }
 
-    // 完成流式消息
     function finalizeStreamingMessage() {
       const msgEl = document.getElementById('streaming-message');
-      if (msgEl) {
-        msgEl.removeAttribute('id');
-      }
+      if (msgEl) msgEl.removeAttribute('id');
     }
 
-    // HTML 转义
     function escapeHtml(text) {
       const div = document.createElement('div');
       div.textContent = text;
       return div.innerHTML;
     }
 
-    // 发送消息
     async function sendMessage() {
       const message = inputEl.value.trim();
       if (!message || isStreaming) return;
-
       inputEl.value = '';
       inputEl.style.height = 'auto';
       addMessage('user', message);
-
       try {
         await request('chat.send', { message });
       } catch (e) {
@@ -798,45 +610,29 @@ function getEmbeddedHtml(config: MoziConfig): string {
       }
     }
 
-    // 清除对话
     async function clearChat() {
       if (isStreaming) return;
-
       try {
         const result = await request('chat.clear');
-        // 清除旧的 sessionKey，保存新的
-        if (result && result.sessionKey) {
-          saveSessionKey(result.sessionKey);
-        }
-        messagesEl.innerHTML = '';
-        if (welcomeEl) {
-          messagesEl.appendChild(welcomeEl);
-          welcomeEl.style.display = 'flex';
-        }
-      } catch (e) {
-        console.error('Failed to clear:', e);
-      }
+        if (result && result.sessionKey) saveSessionKey(result.sessionKey);
+        clearMessagesUI();
+        showWelcome();
+        loadSessionList();
+      } catch (e) { console.error('Failed to clear:', e); }
     }
 
-    // 自动调整输入框高度
     function autoResize() {
       inputEl.style.height = 'auto';
       inputEl.style.height = Math.min(inputEl.scrollHeight, 150) + 'px';
     }
 
-    // 事件绑定
     sendBtn.addEventListener('click', sendMessage);
     clearBtn.addEventListener('click', clearChat);
-
     inputEl.addEventListener('input', autoResize);
     inputEl.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter' && !e.shiftKey) {
-        e.preventDefault();
-        sendMessage();
-      }
+      if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
     });
 
-    // 启动连接
     connect();
   </script>
 </body>

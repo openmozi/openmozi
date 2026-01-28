@@ -7,6 +7,7 @@ import { createServer, type Server as HttpServer } from "http";
 import type { MoziConfig, InboundMessageContext } from "../types/index.js";
 import { createFeishuChannel, type FeishuChannel } from "../channels/feishu/index.js";
 import { createDingtalkChannel, type DingtalkChannel } from "../channels/dingtalk/index.js";
+import { registerChannel } from "../channels/common/index.js";
 import { createAgent, type Agent } from "../agents/agent.js";
 import { initializeProviders } from "../providers/index.js";
 import { getChildLogger, setLogger, createLogger } from "../utils/logger.js";
@@ -58,6 +59,7 @@ export class Gateway {
       this.feishuChannel = createFeishuChannel(this.config.channels.feishu);
       this.feishuChannel.setMessageHandler(this.handleMessage.bind(this));
       this.app.use("/feishu", this.feishuChannel.createRouter());
+      registerChannel(this.feishuChannel);
       logger.info("Feishu webhook enabled at /feishu/webhook");
     }
 
@@ -66,6 +68,7 @@ export class Gateway {
       this.dingtalkChannel = createDingtalkChannel(this.config.channels.dingtalk);
       this.dingtalkChannel.setMessageHandler(this.handleMessage.bind(this));
       this.app.use("/dingtalk", this.dingtalkChannel.createRouter());
+      registerChannel(this.dingtalkChannel);
       logger.info("DingTalk webhook enabled at /dingtalk/webhook");
     }
 
