@@ -131,6 +131,7 @@ export class Agent {
     const builtinTools = createBuiltinTools({
       filesystem: { allowedPaths: [this.options.workingDirectory] },
       bash: { allowedPaths: [this.options.workingDirectory] },
+      enableBrowser: true,
     });
     registerTools(builtinTools);
     this.tools = filterToolsByPolicy(getAllTools(), this.options.toolPolicy);

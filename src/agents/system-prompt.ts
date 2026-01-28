@@ -209,6 +209,54 @@ function buildBashGuide(): string {
 `;
 }
 
+/** 构建浏览器工具使用指南 */
+function buildBrowserGuide(): string {
+  return `
+### 浏览器自动化指南
+
+你可以使用 \`browser\` 工具进行完整的网页自动化操作，包括打开网页、点击按钮、输入文本等。
+
+**基本工作流程**:
+1. **启动浏览器**: \`browser({ action: "start", headless: false })\` - 设置 headless: false 可以看到浏览器窗口
+2. **导航到网页**: \`browser({ action: "navigate", url: "https://example.com" })\`
+3. **获取页面快照**: \`browser({ action: "snapshot" })\` - 获取页面元素引用 (e1, e2, e3...)
+4. **执行交互操作**: 使用 ref 进行点击、输入等操作
+5. **关闭浏览器**: \`browser({ action: "stop" })\`
+
+**元素引用 (ref) 系统**:
+- 调用 snapshot 后会返回页面交互元素的引用，如 e1, e2, e3
+- 在 click、type、hover 等操作中使用这些 ref
+- ref 比 CSS 选择器更可靠，适合 AI 驱动的自动化
+
+**支持的操作**:
+| 操作 | 说明 | 示例 |
+|------|------|------|
+| start | 启动浏览器 | \`{ action: "start", headless: false }\` |
+| stop | 关闭浏览器 | \`{ action: "stop" }\` |
+| navigate | 导航到 URL | \`{ action: "navigate", url: "..." }\` |
+| snapshot | 获取页面元素 | \`{ action: "snapshot" }\` |
+| screenshot | 截图 | \`{ action: "screenshot", fullPage: true }\` |
+| click | 点击元素 | \`{ action: "click", ref: "e1" }\` |
+| type | 输入文本 | \`{ action: "type", ref: "e2", text: "hello", submit: true }\` |
+| hover | 悬停 | \`{ action: "hover", ref: "e3" }\` |
+| scroll | 滚动 | \`{ action: "scroll", direction: "down" }\` 或 \`{ action: "scroll", ref: "e5" }\` |
+| press | 按键 | \`{ action: "press", key: "Enter" }\` |
+| select | 选择下拉项 | \`{ action: "select", ref: "e4", values: ["option1"] }\` |
+| wait | 等待 | \`{ action: "wait", waitFor: "text", value: "Success" }\` |
+
+**点击操作增强**:
+- 双击: \`{ action: "click", ref: "e1", doubleClick: true }\`
+- 右键: \`{ action: "click", ref: "e1", button: "right" }\`
+- 组合键: \`{ action: "click", ref: "e1", modifiers: ["Control"] }\`
+
+**输入操作增强**:
+- 逐字输入: \`{ action: "type", ref: "e2", text: "hello", slowly: true }\`
+- 输入后提交: \`{ action: "type", ref: "e2", text: "search query", submit: true }\`
+
+**重要**: 当用户要求操作网页（如点击按钮、填写表单、浏览网页）时，应该使用 browser 工具而不是简单地用 open 命令打开浏览器。
+`;
+}
+
 /** 构建输出格式指南 */
 function buildOutputFormatGuide(): string {
   return `
@@ -268,6 +316,11 @@ export function buildSystemPrompt(options: SystemPromptOptions): string {
     sections.push(buildToolRulesSection(options.tools));
     sections.push(buildFileOperationsGuide());
     sections.push(buildBashGuide());
+
+    // 如果有浏览器工具，添加浏览器使用指南
+    if (options.tools.some((t) => t.name === "browser")) {
+      sections.push(buildBrowserGuide());
+    }
   }
 
   // 输出格式指南
