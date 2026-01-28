@@ -110,7 +110,7 @@ program
 
       // 检查提供商
       console.log("📦 模型提供商:");
-      const providers = ["deepseek", "minimax", "kimi", "stepfun", "modelscope"] as const;
+      const providers = ["deepseek", "zhipu", "dashscope", "kimi", "stepfun", "minimax", "modelscope"] as const;
       for (const id of providers) {
         const providerConfig = config.providers[id];
         const status = providerConfig?.apiKey ? "✅ 已配置" : "⬜ 未配置";
@@ -265,12 +265,22 @@ program
 
     // 模型配置
     console.log("\n📦 步骤 1/3: 配置模型提供商\n");
-    console.log("支持的提供商: DeepSeek, Kimi, 阶跃星辰, MiniMax, ModelScope (魔搭)");
+    console.log("支持的提供商: DeepSeek, 智谱AI, DashScope(通义千问), Kimi, 阶跃星辰, MiniMax, ModelScope");
     console.log("(至少配置一个，直接回车跳过)\n");
 
     const deepseekKey = await question("DeepSeek API Key: ");
     if (deepseekKey.trim()) {
       envLines.push(`DEEPSEEK_API_KEY=${deepseekKey.trim()}`);
+    }
+
+    const zhipuKey = await question("智谱AI API Key (GLM-4系列，有免费额度): ");
+    if (zhipuKey.trim()) {
+      envLines.push(`ZHIPU_API_KEY=${zhipuKey.trim()}`);
+    }
+
+    const dashscopeKey = await question("DashScope API Key (阿里云灵积，通义千问商业版): ");
+    if (dashscopeKey.trim()) {
+      envLines.push(`DASHSCOPE_API_KEY=${dashscopeKey.trim()}`);
     }
 
     const kimiKey = await question("Kimi (Moonshot) API Key: ");
@@ -292,7 +302,7 @@ program
       }
     }
 
-    const modelscopeKey = await question("ModelScope/DashScope API Key (阿里云): ");
+    const modelscopeKey = await question("ModelScope API Key (阿里魔搭社区，有免费额度): ");
     if (modelscopeKey.trim()) {
       envLines.push(`MODELSCOPE_API_KEY=${modelscopeKey.trim()}`);
     }

@@ -54,7 +54,7 @@ Mozi 的架构设计参考了 [Moltbot](https://github.com/moltbot/moltbot)，�
 
 ```bash
 # 克隆项目
-git clone https://github.com/anthropics/mozi.git
+git clone https://github.com/King-Chau/mozi.git
 cd mozi
 
 # 安装依赖

@@ -8,3 +8,5 @@ coverage/
 .vscode/
 *.tgz
 config.local.json5
+config.local.json5.*
+*.bak
