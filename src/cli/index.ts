@@ -8,8 +8,11 @@ import { Command } from "commander";
 import { loadConfig, validateRequiredConfig } from "../config/index.js";
 import { startGateway } from "../gateway/server.js";
 import { initializeProviders, getAllProviders, getAllModels } from "../providers/index.js";
-import { createLogger, setLogger } from "../utils/logger.js";
+import { createLogger, setLogger, getLogDir, getLogFile } from "../utils/logger.js";
 import dotenv from "dotenv";
+import { spawn } from "child_process";
+import { existsSync, readdirSync, readFileSync, statSync } from "fs";
+import { join } from "path";
 
 // 加载环境变量
 dotenv.config();
@@ -370,5 +373,155 @@ program
 
     rl.close();
   });
+
+// 日志查看命令
+program
+  .command("logs")
+  .description("查看日志")
+  .option("-f, --follow", "实时跟踪日志 (类似 tail -f)")
+  .option("-n, --lines <number>", "显示最后 N 行", "50")
+  .option("-l, --list", "列出所有日志文件")
+  .option("--date <date>", "查看指定日期的日志 (格式: YYYY-MM-DD)")
+  .option("--level <level>", "过滤日志级别 (debug, info, warn, error)")
+  .option("--pretty", "格式化输出 (默认开启)", true)
+  .action(async (options) => {
+    const logDir = getLogDir();
+
+    // 列出所有日志文件
+    if (options.list) {
+      console.log(`\n日志目录: ${logDir}\n`);
+
+      if (!existsSync(logDir)) {
+        console.log("暂无日志文件");
+        return;
+      }
+
+      const files = readdirSync(logDir)
+        .filter((f) => f.endsWith(".log"))
+        .sort()
+        .reverse();
+
+      if (files.length === 0) {
+        console.log("暂无日志文件");
+        return;
+      }
+
+      console.log("日志文件:");
+      for (const file of files) {
+        const filePath = join(logDir, file);
+        const stats = statSync(filePath);
+        const size = (stats.size / 1024).toFixed(1);
+        console.log(`  ${file}  (${size} KB)`);
+      }
+      return;
+    }
+
+    // 确定要查看的日志文件
+    let logFile: string;
+    if (options.date) {
+      logFile = join(logDir, `mozi-${options.date}.log`);
+    } else {
+      logFile = getLogFile();
+    }
+
+    if (!existsSync(logFile)) {
+      console.error(`日志文件不存在: ${logFile}`);
+      console.log(`\n提示: 使用 'mozi logs --list' 查看所有日志文件`);
+      return;
+    }
+
+    console.log(`日志文件: ${logFile}\n`);
+
+    // 实时跟踪模式
+    if (options.follow) {
+      console.log("正在跟踪日志... (Ctrl+C 退出)\n");
+
+      const args = ["-f", logFile];
+      if (options.lines) {
+        args.unshift("-n", options.lines);
+      }
+
+      const tail = spawn("tail", args, { stdio: "pipe" });
+
+      tail.stdout.on("data", (data: Buffer) => {
+        const lines = data.toString().split("\n");
+        for (const line of lines) {
+          if (!line.trim()) continue;
+          printLogLine(line, options.level, options.pretty);
+        }
+      });
+
+      tail.stderr.on("data", (data: Buffer) => {
+        console.error(data.toString());
+      });
+
+      process.on("SIGINT", () => {
+        tail.kill();
+        process.exit(0);
+      });
+
+      return;
+    }
+
+    // 显示最后 N 行
+    const content = readFileSync(logFile, "utf-8");
+    const lines = content.split("\n").filter((l) => l.trim());
+    const lastN = parseInt(options.lines, 10) || 50;
+    const displayLines = lines.slice(-lastN);
+
+    for (const line of displayLines) {
+      printLogLine(line, options.level, options.pretty);
+    }
+
+    console.log(`\n显示最后 ${displayLines.length} 条日志`);
+    console.log(`提示: 使用 'mozi logs -f' 实时跟踪日志`);
+  });
+
+/** 打印日志行 */
+function printLogLine(line: string, levelFilter?: string, pretty?: boolean): void {
+  try {
+    const log = JSON.parse(line);
+
+    // 级别过滤
+    if (levelFilter) {
+      const levelOrder = ["debug", "info", "warn", "error"];
+      const logLevel = levelOrder.indexOf(log.level?.toString() || "info");
+      const filterLevel = levelOrder.indexOf(levelFilter);
+      if (logLevel < filterLevel) return;
+    }
+
+    if (pretty) {
+      // 格式化输出
+      const time = log.time ? new Date(log.time).toLocaleString() : "";
+      const level = (log.level || "INFO").toString().toUpperCase().padEnd(5);
+      const module = log.module ? `[${log.module}]` : "";
+      const msg = log.msg || "";
+
+      // 颜色
+      let levelColor = "\x1b[0m"; // reset
+      if (log.level === 30 || log.level === "info") levelColor = "\x1b[32m"; // green
+      else if (log.level === 40 || log.level === "warn") levelColor = "\x1b[33m"; // yellow
+      else if (log.level === 50 || log.level === "error") levelColor = "\x1b[31m"; // red
+      else if (log.level === 20 || log.level === "debug") levelColor = "\x1b[36m"; // cyan
+
+      console.log(`\x1b[90m${time}\x1b[0m ${levelColor}${level}\x1b[0m ${module} ${msg}`);
+
+      // 显示额外字段
+      const extraKeys = Object.keys(log).filter(
+        (k) => !["time", "level", "module", "msg", "name", "pid", "hostname"].includes(k)
+      );
+      if (extraKeys.length > 0) {
+        const extra: Record<string, unknown> = {};
+        for (const k of extraKeys) extra[k] = log[k];
+        console.log(`  \x1b[90m${JSON.stringify(extra)}\x1b[0m`);
+      }
+    } else {
+      console.log(line);
+    }
+  } catch {
+    // 非 JSON 格式，直接输出
+    console.log(line);
+  }
+}
 
 program.parse();

@@ -112,7 +112,7 @@ export class Agent {
       enableTools: options.enableTools ?? true,
       toolPolicy: options.toolPolicy ?? {},
       enableCompaction: options.enableCompaction ?? true,
-      compactionThreshold: options.compactionThreshold ?? 16000,
+      compactionThreshold: options.compactionThreshold ?? 64000,
       fallbacks: options.fallbacks ?? [],
       maxToolRounds: options.maxToolRounds ?? 10,
       workingDirectory: options.workingDirectory ?? process.cwd(),
