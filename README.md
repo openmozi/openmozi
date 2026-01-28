@@ -253,9 +253,35 @@ npm run typecheck
 npm run build
 ```
 
-## 致谢
+## 与 Moltbot 对比
 
-本项目架构设计参考了 [Moltbot](https://github.com/moltbot/moltbot)。
+Mozi 的架构设计参考了 [Moltbot](https://github.com/moltbot/moltbot)，但专注于不同的使用场景。
+
+| 特性 | Mozi | Moltbot |
+|------|------|---------|
+| **定位** | 国产生态优先的轻量框架 | 全功能个人 AI 助手 |
+| **国产模型** | ✅ DeepSeek、Qwen、Kimi、阶跃星辰、MiniMax | ❌ 仅 Anthropic、OpenAI |
+| **国产通讯** | ✅ 飞书、钉钉原生支持 | ❌ WhatsApp、Telegram、Slack 等海外平台 |
+| **部署复杂度** | 简单，npm install 即可 | 复杂，需要配置多个系统权限 |
+| **Node.js 版本** | ≥18 | ≥22 |
+| **上手门槛** | 低，配置一个 API Key 即可使用 | 高，需要配置 OAuth、TCC 权限等 |
+| **资源占用** | 轻量 | 较重（菜单栏应用、语音唤醒等） |
+| **适用场景** | 企业内部机器人、国内团队协作 | 个人多设备助手、海外平台集成 |
+
+### 选择 Mozi 的理由
+
+- **国产模型一站式支持** — 无需翻墙，直接对接 DeepSeek、通义千问等国产大模型
+- **飞书/钉钉开箱即用** — 原生支持国内主流办公平台，配置简单
+- **轻量快速** — 专注核心功能，无冗余依赖，启动快、资源占用少
+- **低门槛** — 一个 API Key + 三行配置即可运行，适合快速验证和部署
+- **企业友好** — 适合国内企业内网环境，无外部依赖
+
+### 选择 Moltbot 的理由
+
+- 需要 WhatsApp、Telegram、Discord 等海外平台支持
+- 需要语音唤醒、Live Canvas 等高级交互功能
+- 需要多设备同步、macOS/iOS 深度集成
+- 个人使用场景，设备控制需求
 
 ## License
 
