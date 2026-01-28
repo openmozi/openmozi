@@ -1,5 +1,9 @@
 /**
  * 钉钉通道适配器
+ *
+ * 支持两种连接模式：
+ * - stream: Stream 长连接模式 (默认，无需公网部署)
+ * - webhook: 传统 HTTP 回调模式 (需要公网部署)
  */
 
 import { Router, type Request, type Response } from "express";
@@ -13,6 +17,7 @@ import type {
 import { BaseChannelAdapter } from "../common/base.js";
 import { DingtalkApiClient } from "./api.js";
 import { DingtalkEventHandler, type DingtalkCallbackMessage } from "./events.js";
+import { DingtalkStreamClient } from "./stream.js";
 import { getChildLogger } from "../../utils/logger.js";
 
 /** 钉钉通道元数据 */
@@ -47,6 +52,7 @@ export class DingtalkChannel extends BaseChannelAdapter {
   private config: DingtalkConfig;
   private apiClient: DingtalkApiClient;
   private eventHandler: DingtalkEventHandler;
+  private streamClient: DingtalkStreamClient | null = null;
   private initialized = false;
 
   // 缓存会话上下文，用于回复消息
@@ -64,7 +70,8 @@ export class DingtalkChannel extends BaseChannelAdapter {
   async initialize(): Promise<void> {
     if (this.initialized) return;
 
-    this.logger.info("Initializing DingTalk channel");
+    const mode = this.config.mode || "stream"; // 默认使用长连接
+    this.logger.info({ mode }, "Initializing DingTalk channel");
 
     // 验证配置
     if (!this.config.appKey || !this.config.appSecret) {
@@ -80,12 +87,37 @@ export class DingtalkChannel extends BaseChannelAdapter {
       throw error;
     }
 
+    // 如果使用 Stream 模式，启动长连接
+    if (mode === "stream") {
+      await this.startStream();
+    }
+
     this.initialized = true;
+  }
+
+  /** 启动 Stream 连接 */
+  private async startStream(): Promise<void> {
+    this.logger.info("Starting DingTalk Stream client");
+    this.streamClient = new DingtalkStreamClient(this.config);
+
+    // 设置事件处理器
+    this.streamClient.setEventHandler(async (context) => {
+      await this.handleInboundMessage(context);
+    });
+
+    // 启动连接
+    await this.streamClient.start();
   }
 
   /** 关闭通道 */
   async shutdown(): Promise<void> {
     this.logger.info("Shutting down DingTalk channel");
+
+    if (this.streamClient) {
+      await this.streamClient.stop();
+      this.streamClient = null;
+    }
+
     this.sessionCache.clear();
     this.initialized = false;
   }
@@ -124,7 +156,15 @@ export class DingtalkChannel extends BaseChannelAdapter {
   /** 检查通道状态 */
   async isHealthy(): Promise<boolean> {
     try {
+      // 检查 API 认证
       await this.apiClient.getAccessToken();
+
+      // 如果使用 Stream 模式，还要检查连接状态
+      const mode = this.config.mode || "stream";
+      if (mode === "stream" && this.streamClient) {
+        return this.streamClient.isConnected();
+      }
+
       return true;
     } catch {
       return false;
@@ -135,6 +175,7 @@ export class DingtalkChannel extends BaseChannelAdapter {
   createRouter(): Router {
     const router = Router();
 
+    // Webhook 路由（即使使用 Stream 模式也保留，用于兼容）
     router.post("/webhook", (req: Request, res: Response) => {
       this.handleWebhook(req, res).catch((error) => {
         this.logger.error({ error }, "Webhook handler error");
@@ -166,6 +207,13 @@ export class DingtalkChannel extends BaseChannelAdapter {
 
       // 立即响应
       res.json({ msgtype: "empty" });
+
+      // 如果使用 Stream 模式，忽略 Webhook 消息（防止重复处理）
+      const mode = this.config.mode || "stream";
+      if (mode === "stream") {
+        this.logger.debug("Ignoring webhook message in Stream mode");
+        return;
+      }
 
       // 缓存会话上下文
       if (message.sessionWebhook) {
@@ -218,6 +266,17 @@ export class DingtalkChannel extends BaseChannelAdapter {
   /** 获取 API 客户端 */
   getApiClient(): DingtalkApiClient {
     return this.apiClient;
+  }
+
+  /** 获取连接模式 */
+  getMode(): "stream" | "webhook" {
+    return this.config.mode || "stream";
+  }
+
+  /** 检查是否使用长连接 */
+  isUsingStream(): boolean {
+    const mode = this.config.mode || "stream";
+    return mode === "stream" && this.streamClient !== null;
   }
 }
 
