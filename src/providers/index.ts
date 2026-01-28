@@ -9,6 +9,8 @@ import { createKimiProvider, KimiProvider } from "./kimi.js";
 import { createStepfunProvider, StepfunProvider } from "./stepfun.js";
 import { createMiniMaxProvider, MiniMaxProvider } from "./minimax.js";
 import { createModelScopeProvider, ModelScopeProvider } from "./modelscope.js";
+import { createDashScopeProvider, DashScopeProvider } from "./dashscope.js";
+import { createZhipuProvider, ZhipuProvider } from "./zhipu.js";
 import {
   createCustomOpenAIProvider,
   createOpenAIProvider,
@@ -31,6 +33,8 @@ export * from "./kimi.js";
 export * from "./stepfun.js";
 export * from "./minimax.js";
 export * from "./modelscope.js";
+export * from "./dashscope.js";
+export * from "./zhipu.js";
 export * from "./custom-openai.js";
 export * from "./anthropic-compatible.js";
 
@@ -107,6 +111,24 @@ export function initializeProviders(config: MoziConfig): void {
     const provider = createModelScopeProvider(
       providersConfig.modelscope.apiKey,
       providersConfig.modelscope.baseUrl
+    );
+    registerProvider(provider);
+  }
+
+  // DashScope (灵积/阿里云)
+  if (providersConfig.dashscope?.apiKey) {
+    const provider = createDashScopeProvider(
+      providersConfig.dashscope.apiKey,
+      providersConfig.dashscope.baseUrl
+    );
+    registerProvider(provider);
+  }
+
+  // 智谱 AI
+  if (providersConfig.zhipu?.apiKey) {
+    const provider = createZhipuProvider(
+      providersConfig.zhipu.apiKey,
+      providersConfig.zhipu.baseUrl
     );
     registerProvider(provider);
   }

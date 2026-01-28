@@ -114,7 +114,9 @@ npm start -- start
 | 提供商 | 环境变量 | 说明 |
 |--------|----------|------|
 | DeepSeek | `DEEPSEEK_API_KEY` | 推理能力强、性价比高 |
-| ModelScope | `MODELSCOPE_API_KEY` | 阿里云魔搭，Qwen 系列，有免费额度 |
+| DashScope | `DASHSCOPE_API_KEY` | 阿里云灵积，通义千问商业版，稳定高并发 |
+| 智谱 AI | `ZHIPU_API_KEY` | GLM 系列，清华技术团队，免费额度 |
+| ModelScope | `MODELSCOPE_API_KEY` | 阿里云魔搭社区，Qwen 系列，有免费额度 |
 | Kimi | `KIMI_API_KEY` | 长上下文支持 |
 | 阶跃星辰 | `STEPFUN_API_KEY` | 多模态能力 |
 | MiniMax | `MINIMAX_API_KEY` | 语音、视觉能力 |
@@ -133,6 +135,12 @@ npm start -- start
   providers: {
     deepseek: {
       apiKey: "sk-xxx"
+    },
+    dashscope: {
+      apiKey: "sk-xxx"  // 阿里云 API Key
+    },
+    zhipu: {
+      apiKey: "xxx"  // 智谱 API Key
     },
     modelscope: {
       apiKey: "ms-xxx"
