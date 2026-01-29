@@ -2,12 +2,12 @@
 
 **支持国产大模型和国产通讯软件的智能助手框架**
 
-Mozi 是一个轻量级的 AI 助手框架，专注于国产生态。它提供统一的接口对接多种国产 AI 模型（DeepSeek、Qwen、Kimi 等），支持 OpenAI Function Calling，并能在飞书、钉钉等平台上运行。
+Mozi 是一个轻量级的 AI 助手框架，专注于国产生态。它提供统一的接口对接多种国产 AI 模型（DeepSeek、Qwen、Kimi 等），支持 OpenAI Function Calling，并支持 QQ、飞书、钉钉等通讯平台。
 
 ## 核心特性
 
 - **多模型支持** — DeepSeek、DashScope (Qwen)、智谱AI、Kimi、阶跃星辰、MiniMax，以及 OpenAI/Anthropic 兼容格式
-- **多平台通道** — 飞书、钉钉、QQ，统一的消息处理接口
+- **多平台通道** — QQ、飞书、钉钉，统一的消息处理接口
 - **Function Calling** — 原生支持 OpenAI tools/tool_choice 参数
 - **17 内置工具** — 文件读写、Bash 执行、代码搜索、网页获取、图像分析、浏览器自动化等
 - **会话管理** — 上下文压缩、会话持久化、多轮对话
@@ -22,7 +22,7 @@ Mozi 的架构设计参考了 [Moltbot](https://github.com/moltbot/moltbot)，�
 | **定位** | 国产生态优先的轻量框架 | 全功能个人 AI 助手 |
 | **代码量** | ~16,000 行 (64 文件) | ~516,000 行 (3,137 文件) |
 | **国产模型** | DeepSeek、Qwen、Kimi 等 7+ 家 | 仅 Anthropic、OpenAI |
-| **国产通讯** | 飞书、钉钉、QQ 原生支持 | WhatsApp、Telegram、Slack 等 |
+| **国产通讯** | QQ、飞书、钉钉原生支持 | WhatsApp、Telegram、Slack 等 |
 | **Node.js 版本** | >= 18 | >= 22 |
 | **适用场景** | 企业内部机器人、国内团队协作 | 个人多设备助手、海外平台集成 |
 
@@ -175,7 +175,7 @@ mozi onboard
 - **国产模型** — DeepSeek、智谱AI、DashScope、Kimi、阶跃星辰、MiniMax、ModelScope
 - **自定义 OpenAI 兼容接口** — 支持任意 OpenAI API 格式的服务（如 vLLM、Ollama）
 - **自定义 Anthropic 兼容接口** — 支持任意 Claude API 格式的服务
-- **通讯平台** — 飞书、钉钉、QQ
+- **通讯平台** — QQ、飞书、钉钉
 
 配置文件将保存到 `~/.mozi/config.local.json5`。
 
@@ -188,10 +188,10 @@ export DEEPSEEK_API_KEY=sk-your-key
 ### 3. 启动
 
 ```bash
-# 仅 WebChat（无需配置飞书/钉钉）
+# 仅 WebChat（无需配置 QQ/飞书/钉钉）
 mozi start --web-only
 
-# 完整服务（WebChat + 飞书 + 钉钉）
+# 完整服务（WebChat + QQ + 飞书 + 钉钉）
 mozi start
 
 # 克隆项目方式
@@ -276,7 +276,7 @@ npm start -- start --web-only
 
 ## 通讯平台接入
 
-飞书、钉钉和 QQ 都支持长连接模式：
+QQ、飞书和钉钉都支持长连接模式：
 
 | 模式 | 说明 | 适用场景 |
 |------|------|----------|
@@ -534,7 +534,7 @@ mozi check              # 检查配置
 mozi models             # 列出可用模型
 
 # 启动服务
-mozi start              # 完整服务（含飞书/钉钉）
+mozi start              # 完整服务（含 QQ/飞书/钉钉）
 mozi start --web-only   # 仅 WebChat
 mozi start --port 8080  # 指定端口
 
@@ -555,7 +555,7 @@ mozi logs --level error # 只显示错误日志
 ```
 src/
 ├── agents/        # Agent 核心（消息循环、上下文压缩、会话管理）
-├── channels/      # 通道适配器（飞书、钉钉）
+├── channels/      # 通道适配器（QQ、飞书、钉钉）
 ├── providers/     # 模型提供商（统一接口）
 ├── tools/         # 内置工具（文件、Bash、网络等）
 ├── sessions/      # 会话存储（内存、文件）
