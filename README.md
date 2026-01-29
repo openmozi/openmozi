@@ -350,25 +350,53 @@ QQ、飞书和钉钉都支持长连接模式：
 
 ### 钉钉
 
-1. 登录 [钉钉开放平台](https://open.dingtalk.com/)，创建企业内部应用
-2. 获取 AppKey 和 AppSecret
-3. 添加「机器人」能力
-4. 在机器人配置页面，消息接收模式选择「Stream 模式」
-5. 配置完成，启动服务即可
+#### 1. 创建应用
+
+1. 前往 [钉钉开放平台](https://open-dev.dingtalk.com/fe/app)（需管理员权限）
+2. 点击「创建应用」，选择「机器人」类型
+3. 填写应用名称等必要信息，完成创建
+
+#### 2. 获取凭证
+
+1. 在应用详情页面，点击「凭证与基础信息」
+2. 保存 **Client ID** 和 **Client Secret**
+
+#### 3. 发布应用
+
+1. 点击「版本管理与发布」，点击「创建新版本」
+2. 填写版本描述，点击「保存」
+3. 点击「发布」，在弹窗中确认发布
+
+#### 4. 配置环境变量
+
+```bash
+export DINGTALK_APP_KEY=your_client_id
+export DINGTALK_APP_SECRET=your_client_secret
+```
+
+或使用配置文件：
 
 ```json5
 {
   channels: {
     dingtalk: {
-      appKey: "xxx",
-      appSecret: "xxx",
+      appKey: "your_client_id",
+      appSecret: "your_client_secret",
       mode: "stream"  // 默认值，可省略
     }
   }
 }
 ```
 
-> Webhook 模式：将步骤 4 改为 HTTP 模式，配置消息接收地址为 `http://your-server:3000/webhook/dingtalk`，并设置 `mode: "webhook"`。
+#### 5. 启动并测试
+
+```bash
+mozi start
+```
+
+在钉钉中搜索机器人名称，发送消息测试。
+
+> **Webhook 模式**：如需使用 HTTP 回调模式，在应用配置中将消息接收模式改为 HTTP 模式，配置地址为 `http://your-server:3000/dingtalk/webhook`，并设置 `mode: "webhook"`。
 
 ### QQ
 
