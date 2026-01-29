@@ -130,26 +130,39 @@ npm start -- start
 
 支持 `config.local.json5`、`config.json5`、`config.yaml` 等格式，优先级从高到低。
 
-### 完整配置示例
+### 模型提供商配置
+
+所有内置提供商都支持自定义模型配置：
 
 ```json5
 {
-  // 模型提供商配置
   providers: {
+    // 内置提供商 - 直接配置 apiKey 即可使用预设模型
     deepseek: {
       apiKey: "sk-xxx"
     },
+
+    // 内置提供商 + 自定义模型列表
     dashscope: {
-      apiKey: "sk-xxx"  // 阿里云 API Key
+      apiKey: "sk-xxx",
+      models: [
+        {
+          id: "qwen-max-latest",
+          name: "通义千问 Max",
+          contextWindow: 32768,
+          maxTokens: 8192
+        },
+        {
+          id: "qwen-plus-latest",
+          name: "通义千问 Plus",
+          contextWindow: 131072,
+          maxTokens: 8192
+        }
+      ]
     },
-    zhipu: {
-      apiKey: "xxx"  // 智谱 API Key
-    },
-    modelscope: {
-      apiKey: "ms-xxx"
-    },
+
     // 自定义 OpenAI 兼容接口
-    "custom-openai": {
+    "custom-provider": {
       id: "my-provider",
       name: "My Provider",
       baseUrl: "https://api.example.com/v1",
@@ -160,21 +173,77 @@ npm start -- start
           name: "Model Name",
           contextWindow: 32768,
           maxTokens: 4096,
-          supportsVision: false
+          supportsVision: false,
+          supportsTools: true
         }
       ]
     }
+  }
+}
+```
+
+### 通讯平台配置
+
+飞书和钉钉都支持两种连接模式：
+
+| 模式 | 说明 | 适用场景 |
+|------|------|----------|
+| **长连接（默认）** | WebSocket/Stream 主动连接，无需公网 IP | 内网部署、本地开发 |
+| Webhook | 被动接收回调，需要公网可访问地址 | 公网服务器部署 |
+
+```json5
+{
+  channels: {
+    // 飞书配置
+    feishu: {
+      appId: "cli_xxx",
+      appSecret: "xxx",
+      mode: "websocket"  // "websocket"（默认）或 "webhook"
+    },
+
+    // 钉钉配置
+    dingtalk: {
+      appKey: "xxx",
+      appSecret: "xxx",
+      mode: "stream"  // "stream"（默认）或 "webhook"
+    }
+  }
+}
+```
+
+> **推荐使用长连接模式**：无需公网 IP，无需配置回调地址，启动即可接收消息。
+
+### 完整配置示例
+
+```json5
+{
+  // 模型提供商配置
+  providers: {
+    deepseek: {
+      apiKey: "sk-xxx"
+    },
+    dashscope: {
+      apiKey: "sk-xxx"  // 阿里云灵积 API Key
+    },
+    zhipu: {
+      apiKey: "xxx"  // 智谱 API Key
+    },
+    modelscope: {
+      apiKey: "ms-xxx"
+    }
   },
 
-  // 通讯平台配置
+  // 通讯平台配置（长连接模式，无需公网）
   channels: {
     feishu: {
       appId: "cli_xxx",
-      appSecret: "xxx"
+      appSecret: "xxx",
+      mode: "websocket"  // 默认值，可省略
     },
     dingtalk: {
       appKey: "xxx",
-      appSecret: "xxx"
+      appSecret: "xxx",
+      mode: "stream"  // 默认值，可省略
     }
   },
 
@@ -222,19 +291,89 @@ npm start -- start
 
 ### 飞书
 
+#### 长连接模式（推荐）
+
+无需公网 IP，适合内网部署和本地开发：
+
 1. 登录 [飞书开放平台](https://open.feishu.cn/)，创建企业自建应用
 2. 获取 App ID 和 App Secret
 3. 启用「机器人」能力
-4. 配置事件订阅地址：`http://your-server:3000/webhook/feishu`
-5. 订阅事件：`im.message.receive_v1`
-6. 添加权限：`im:message`、`im:message.group_at_msg`
+4. 添加权限：`im:message`、`im:message.group_at_msg`
+5. 配置完成，启动服务即可
+
+```json5
+{
+  channels: {
+    feishu: {
+      appId: "cli_xxx",
+      appSecret: "xxx"
+      // mode: "websocket" 是默认值，可省略
+    }
+  }
+}
+```
+
+#### Webhook 模式
+
+需要公网可访问地址：
+
+1. 完成上述步骤 1-4
+2. 配置事件订阅地址：`http://your-server:3000/webhook/feishu`
+3. 订阅事件：`im.message.receive_v1`
+
+```json5
+{
+  channels: {
+    feishu: {
+      appId: "cli_xxx",
+      appSecret: "xxx",
+      mode: "webhook"
+    }
+  }
+}
+```
 
 ### 钉钉
+
+#### 长连接模式（推荐）
+
+无需公网 IP，使用官方 Stream SDK：
 
 1. 登录 [钉钉开放平台](https://open.dingtalk.com/)，创建企业内部应用
 2. 获取 AppKey 和 AppSecret
 3. 添加「机器人」能力
-4. 配置消息接收地址：`http://your-server:3000/webhook/dingtalk`
+4. 配置完成，启动服务即可
+
+```json5
+{
+  channels: {
+    dingtalk: {
+      appKey: "xxx",
+      appSecret: "xxx"
+      // mode: "stream" 是默认值，可省略
+    }
+  }
+}
+```
+
+#### Webhook 模式
+
+需要公网可访问地址：
+
+1. 完成上述步骤 1-3
+2. 配置消息接收地址：`http://your-server:3000/webhook/dingtalk`
+
+```json5
+{
+  channels: {
+    dingtalk: {
+      appKey: "xxx",
+      appSecret: "xxx",
+      mode: "webhook"
+    }
+  }
+}
+```
 
 ## CLI 命令
 
