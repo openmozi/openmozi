@@ -673,8 +673,8 @@ function generateJson5(obj: unknown, indent = 0): string {
     if (entries.length === 0) return "{}";
 
     const items = entries.map(([key, value]) => {
-      // 使用不带引号的 key（如果是有效标识符）
-      const safeKey = /^[a-zA-Z_$][a-zA-Z0-9_$-]*$/.test(key) ? key : `"${key}"`;
+      // 使用不带引号的 key（如果是有效的 ECMAScript 标识符）
+      const safeKey = /^[a-zA-Z_$][a-zA-Z0-9_$]*$/.test(key) ? key : `"${key}"`;
       return `${innerSpaces}${safeKey}: ${generateJson5(value, indent + 1)}`;
     });
 

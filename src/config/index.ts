@@ -5,6 +5,7 @@
 import { z } from "zod";
 import { readFileSync, existsSync } from "fs";
 import { join } from "path";
+import { homedir } from "os";
 import json5 from "json5";
 import yaml from "yaml";
 import type { MoziConfig, ProviderId } from "../types/index.js";
@@ -301,9 +302,18 @@ function mergeConfigs(...configs: Partial<MoziConfig>[]): Partial<MoziConfig> {
 
 /** 加载配置 */
 export function loadConfig(options?: { configPath?: string }): MoziConfig {
+  const moziDir = join(homedir(), ".mozi");
   const configPaths = options?.configPath
     ? [options.configPath]
     : [
+        // 优先从 ~/.mozi/ 目录读取
+        join(moziDir, "config.local.json5"),
+        join(moziDir, "config.local.json"),
+        join(moziDir, "config.json5"),
+        join(moziDir, "config.json"),
+        join(moziDir, "config.yaml"),
+        join(moziDir, "config.yml"),
+        // 然后从当前目录读取
         join(process.cwd(), "config.local.json5"),
         join(process.cwd(), "config.local.json"),
         join(process.cwd(), "config.json5"),
