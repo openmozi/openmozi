@@ -31,45 +31,77 @@ Mozi 的架构设计参考了 [Moltbot](https://github.com/moltbot/moltbot)，�
 ## 架构设计
 
 ```mermaid
-flowchart TB
-    subgraph Channels["📡 通道层 Channels"]
-        Feishu["飞书"]
-        Dingtalk["钉钉"]
-        WebChat["WebChat"]
+flowchart LR
+    subgraph Channels["📡 通道层"]
+        direction TB
+        Feishu["飞书<br/>WebSocket"]
+        Dingtalk["钉钉<br/>Stream"]
+        WebChat["WebChat<br/>HTTP/WS"]
     end
 
-    subgraph Gateway["🚪 网关层 Gateway"]
+    subgraph Gateway["🚪 网关层"]
+        direction TB
         HTTP["HTTP Server"]
         WS["WebSocket Server"]
     end
 
-    subgraph Agent["🤖 核心层 Agent"]
-        Loop["消息循环<br/>User → LLM → Tool → Result"]
-        Context["上下文管理<br/>History / Compression"]
-        Session["会话存储<br/>Memory / File"]
+    subgraph Core["🤖 Agent 核心"]
+        direction TB
+        Loop["消息循环"]
+        Context["上下文管理"]
+        Session["会话存储"]
     end
 
-    subgraph Providers["🔌 模型提供商"]
-        DeepSeek
-        DashScope
-        Zhipu["智谱AI"]
-        Kimi
-        OpenAI
-        Anthropic
+    subgraph LLM["🔌 模型层"]
+        direction TB
+        P1["DeepSeek"]
+        P2["DashScope"]
+        P3["智谱AI"]
+        P4["Kimi"]
+        P5["OpenAI"]
     end
 
-    subgraph Tools["🛠️ 工具系统"]
-        FileOps["文件操作<br/>read/write/edit/glob"]
-        Bash["Bash 执行"]
-        Web["网络请求<br/>search/fetch"]
-        Media["多媒体<br/>image/browser"]
-        SubAgent["子 Agent"]
+    subgraph Tools["🛠️ 工具层"]
+        direction TB
+        T1["文件操作"]
+        T2["Bash 执行"]
+        T3["网络请求"]
+        T4["浏览器"]
+        T5["子Agent"]
     end
 
-    Channels --> Gateway
-    Gateway --> Agent
-    Agent --> Providers
-    Agent --> Tools
+    Channels --> Gateway --> Core
+    Core <--> LLM
+    Core <--> Tools
+```
+
+### 消息处理流程
+
+```mermaid
+flowchart TD
+    Start([用户发送消息]) --> Channel[Channel 接收]
+    Channel --> Gateway[Gateway 路由]
+    Gateway --> LoadCtx[加载会话上下文]
+
+    LoadCtx --> BuildCtx[构建 LLM 请求]
+    BuildCtx --> |系统提示词<br/>历史消息<br/>工具列表| CallLLM[调用 LLM]
+
+    CallLLM --> Check{返回类型?}
+
+    Check --> |纯文本| Response[返回响应]
+    Check --> |工具调用| ExecTool[执行工具]
+
+    ExecTool --> ToolResult[工具返回结果]
+    ToolResult --> |加入上下文| CallLLM
+
+    Response --> SaveCtx[保存会话]
+    SaveCtx --> Send[Channel 发送]
+    Send --> End([用户收到回复])
+
+    style Start fill:#e1f5fe
+    style End fill:#e8f5e9
+    style CallLLM fill:#fff3e0
+    style ExecTool fill:#fce4ec
 ```
 
 ### 核心模块
@@ -82,32 +114,6 @@ flowchart TB
 | **Channels** | `src/channels/` | 通道适配器，统一消息格式，支持长连接和 Webhook |
 | **Sessions** | `src/sessions/` | 会话持久化，支持内存/文件存储，Transcript 记录 |
 | **Gateway** | `src/gateway/` | HTTP/WebSocket 服务，路由分发 |
-
-### 消息处理流程
-
-```
-1. 用户消息 ──► Channel 接收 ──► Gateway 路由 ──► Agent 处理
-                                                      │
-2. Agent 构建上下文 ◄────────────────────────────────┘
-   │
-   ├─► 加载会话历史
-   ├─► 注入系统提示词
-   └─► 添加可用工具列表
-                    │
-3. 调用 LLM ◄───────┘
-   │
-   ├─► 模型返回文本 ──► 直接响应用户
-   │
-   └─► 模型返回工具调用 ──► 执行工具
-                              │
-4. 工具执行结果 ◄─────────────┘
-   │
-   └─► 将结果加入上下文 ──► 回到步骤 3（循环直到无工具调用）
-                              │
-5. 最终响应 ◄────────────────┘
-   │
-   └─► 保存会话 ──► Channel 发送 ──► 用户收到回复
-```
 
 ### 上下文压缩策略
 
