@@ -64,11 +64,23 @@ cd mozi && npm install && npm run build
 
 ### 2. 配置
 
-npm 安装后，在 `~/.mozi/` 目录下创建配置文件 `config.local.json5`：
+运行配置向导（推荐）：
 
 ```bash
-mkdir -p ~/.mozi
-cat > ~/.mozi/config.local.json5 << 'EOF'
+mozi onboard
+```
+
+向导会引导你选择模型提供商并输入 API Key，自动生成配置文件。
+
+或者使用环境变量（更简单）：
+
+```bash
+export DEEPSEEK_API_KEY=sk-your-key
+```
+
+也可以手动创建配置文件 `~/.mozi/config.local.json5`：
+
+```json5
 {
   providers: {
     deepseek: {
@@ -80,13 +92,6 @@ cat > ~/.mozi/config.local.json5 << 'EOF'
     defaultModel: "deepseek-chat"
   }
 }
-EOF
-```
-
-或者使用环境变量（更简单）：
-
-```bash
-export DEEPSEEK_API_KEY=sk-your-key
 ```
 
 ### 3. 启动
