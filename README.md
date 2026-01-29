@@ -344,7 +344,8 @@ npm start -- start
 1. 登录 [钉钉开放平台](https://open.dingtalk.com/)，创建企业内部应用
 2. 获取 AppKey 和 AppSecret
 3. 添加「机器人」能力
-4. 配置完成，启动服务即可
+4. 在机器人配置页面，消息接收模式选择「Stream 模式」
+5. 配置完成，启动服务即可
 
 ```json5
 {
