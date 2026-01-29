@@ -102,6 +102,16 @@ export class DingtalkChannel extends BaseChannelAdapter {
 
     // 设置事件处理器
     this.streamClient.setEventHandler(async (context) => {
+      // 缓存 sessionWebhook 用于回复
+      const extContext = context as InboundMessageContext & { sessionWebhook?: string; sessionWebhookExpiredTime?: number };
+      if (extContext.sessionWebhook) {
+        this.sessionCache.set(context.chatId, {
+          sessionWebhook: extContext.sessionWebhook,
+          expireTime: extContext.sessionWebhookExpiredTime || Date.now() + 3600000,
+          conversationType: context.chatType === "group" ? "group" : "direct",
+          openConversationId: context.chatId,
+        });
+      }
       await this.handleInboundMessage(context);
     });
 

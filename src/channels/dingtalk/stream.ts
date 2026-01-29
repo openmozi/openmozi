@@ -99,7 +99,7 @@ export class DingtalkStreamClient {
       }
 
       // 构建消息上下文
-      const context: InboundMessageContext = {
+      const context: InboundMessageContext & { sessionWebhook?: string; sessionWebhookExpiredTime?: number } = {
         channelId: "dingtalk",
         messageId: data.msgId,
         chatId: data.conversationId,
@@ -109,6 +109,8 @@ export class DingtalkStreamClient {
         content,
         timestamp: data.createAt || Date.now(),
         raw: data,
+        sessionWebhook: data.sessionWebhook,
+        sessionWebhookExpiredTime: data.sessionWebhookExpiredTime,
       };
 
       // 调用事件处理器
