@@ -299,7 +299,9 @@ npm start -- start
 2. 获取 App ID 和 App Secret
 3. 启用「机器人」能力
 4. 添加权限：`im:message`、`im:message.group_at_msg`
-5. 配置完成，启动服务即可
+5. 进入「事件订阅」，将订阅方式设置为「使用长连接接收事件」
+6. 添加事件：`im.message.receive_v1`（接收消息）
+7. 配置完成，启动服务即可
 
 ```json5
 {
