@@ -6,7 +6,7 @@
 import { Type } from "@sinclair/typebox";
 import { readFile, writeFile, mkdir } from "fs/promises";
 import { existsSync } from "fs";
-import { resolve, dirname } from "path";
+import { resolve, dirname, sep } from "path";
 import type { Tool } from "../types.js";
 import { jsonResult, textResult, readStringParam } from "../common.js";
 
@@ -184,7 +184,7 @@ export function createApplyPatchTool(allowedPaths?: string[]): Tool {
     const resolved = resolve(filePath);
     return allowed.some((a) => {
       const ra = resolve(a);
-      return resolved === ra || resolved.startsWith(ra + "/");
+      return resolved === ra || resolved.startsWith(ra + sep);
     });
   }
 

@@ -5,7 +5,7 @@
 
 import { Type } from "@sinclair/typebox";
 import { spawn } from "child_process";
-import { resolve } from "path";
+import { resolve, sep } from "path";
 import type { Tool } from "../types.js";
 import { jsonResult, textResult, readStringParam, readNumberParam, readBooleanParam } from "../common.js";
 import {
@@ -59,13 +59,40 @@ function isPathAllowed(path: string, allowedPaths: string[]): boolean {
   const resolved = resolve(path);
   return allowedPaths.some((allowed) => {
     const resolvedAllowed = resolve(allowed);
-    return resolved === resolvedAllowed || resolved.startsWith(resolvedAllowed + "/");
+    return resolved === resolvedAllowed || resolved.startsWith(resolvedAllowed + sep);
   });
 }
 
 /** 检查命令是否被禁止 */
 function isCommandBlocked(command: string, blockedPatterns: RegExp[]): boolean {
   return blockedPatterns.some((pattern) => pattern.test(command));
+}
+
+/** 判断是否是 Windows 平台 */
+const isWindows = process.platform === "win32";
+
+/** 获取 Shell 命令和参数 */
+function getShellCommand(command: string): { shell: string; args: string[] } {
+  if (isWindows) {
+    return { shell: "cmd.exe", args: ["/c", command] };
+  }
+  return { shell: "bash", args: ["-c", command] };
+}
+
+/** 跨平台终止进程 */
+function killProcess(proc: ReturnType<typeof spawn>, signal: "SIGTERM" | "SIGKILL"): void {
+  try {
+    if (isWindows) {
+      // Windows 上使用 taskkill
+      if (proc.pid) {
+        spawn("taskkill", ["/pid", String(proc.pid), "/f", "/t"], { stdio: "ignore" });
+      }
+    } else {
+      proc.kill(signal);
+    }
+  } catch {
+    // ignore
+  }
 }
 
 /** 创建 Bash 执行工具 */
@@ -147,7 +174,8 @@ Parameters:
       };
 
       // 启动进程
-      const proc = spawn("bash", ["-c", command], {
+      const { shell, args: shellArgs } = getShellCommand(command);
+      const proc = spawn(shell, shellArgs, {
         cwd,
         env: { ...process.env },
         stdio: ["pipe", "pipe", "pipe"],
@@ -196,16 +224,16 @@ Parameters:
         // 超时处理
         const timeoutId = setTimeout(() => {
           killed = true;
-          proc.kill("SIGTERM");
+          killProcess(proc, "SIGTERM");
           setTimeout(() => {
-            if (!proc.killed) proc.kill("SIGKILL");
+            if (!proc.killed) killProcess(proc, "SIGKILL");
           }, 5000);
         }, timeout);
 
         // 中止信号处理
         signal?.addEventListener("abort", () => {
           killed = true;
-          proc.kill("SIGTERM");
+          killProcess(proc, "SIGTERM");
         });
 
         proc.on("close", (code) => {

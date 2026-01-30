@@ -6,7 +6,7 @@
 import { Type } from "@sinclair/typebox";
 import { readFile, writeFile, stat, readdir } from "fs/promises";
 import { existsSync } from "fs";
-import { join, resolve, relative, basename, dirname, extname } from "path";
+import { join, resolve, relative, basename, dirname, extname, sep } from "path";
 import { glob } from "glob";
 import type { Tool } from "../types.js";
 import { jsonResult, textResult, readStringParam, readNumberParam, readBooleanParam } from "../common.js";
@@ -32,7 +32,8 @@ function isPathAllowed(filePath: string, allowedPaths: string[]): boolean {
   const resolved = resolve(filePath);
   return allowedPaths.some((allowed) => {
     const resolvedAllowed = resolve(allowed);
-    return resolved === resolvedAllowed || resolved.startsWith(resolvedAllowed + "/");
+    // 使用 path.sep 支持跨平台
+    return resolved === resolvedAllowed || resolved.startsWith(resolvedAllowed + sep);
   });
 }
 

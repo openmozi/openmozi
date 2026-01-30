@@ -165,6 +165,7 @@ flowchart TD
 
 - Node.js >= 18
 - npm / pnpm / yarn
+- **跨平台支持**：macOS、Linux、Windows
 
 ### 1. 安装
 

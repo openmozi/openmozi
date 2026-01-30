@@ -4,6 +4,26 @@
  */
 
 import type { ChildProcess } from "child_process";
+import { spawn } from "child_process";
+
+/** 判断是否是 Windows 平台 */
+const isWindows = process.platform === "win32";
+
+/** 跨平台终止进程 */
+function killProcessCrossPlatform(child: ChildProcess, signal: "SIGTERM" | "SIGKILL"): void {
+  try {
+    if (isWindows) {
+      // Windows 上使用 taskkill
+      if (child.pid) {
+        spawn("taskkill", ["/pid", String(child.pid), "/f", "/t"], { stdio: "ignore" });
+      }
+    } else {
+      child.kill(signal);
+    }
+  } catch {
+    // ignore
+  }
+}
 
 /** 进程会话状态 */
 export type SessionStatus = "running" | "completed" | "failed";
@@ -156,16 +176,12 @@ export function deleteSession(id: string): boolean {
 /** 终止会话 */
 export function killSession(session: ProcessSession): void {
   if (session.child && !session.child.killed) {
-    try {
-      session.child.kill("SIGTERM");
-      setTimeout(() => {
-        if (session.child && !session.child.killed) {
-          session.child.kill("SIGKILL");
-        }
-      }, 5000);
-    } catch {
-      // ignore
-    }
+    killProcessCrossPlatform(session.child, "SIGTERM");
+    setTimeout(() => {
+      if (session.child && !session.child.killed) {
+        killProcessCrossPlatform(session.child, "SIGKILL");
+      }
+    }, 5000);
   }
 }
 
