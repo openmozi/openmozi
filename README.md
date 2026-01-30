@@ -803,10 +803,6 @@ npm run build
 npm test
 ```
 
-## Star History
-
-[![Star History Chart](https://api.star-history.com/svg?repos=King-Chau/mozi&type=Date)](https://star-history.com/#King-Chau/mozi&Date)
-
 ## License
 
 Apache 2.0
