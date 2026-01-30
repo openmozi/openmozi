@@ -41,6 +41,7 @@ Mozi 的架构设计参考了 [Moltbot](https://github.com/moltbot/moltbot)，�
 - **消息循环** — 用户输入 → LLM 推理 → 工具调用 → 结果反馈
 - **上下文管理** — 会话历史、Token 压缩、多轮对话
 - **工具系统** — 函数定义、参数校验、结果处理
+- **技能系统** — SKILL.md 加载、知识注入、系统提示词扩展
 - **流式输出** — SSE/WebSocket 实时响应
 - **失败重试** — 模型调用失败自动切换备选模型
 
@@ -69,6 +70,7 @@ flowchart TB
             MsgLoop["📨 消息循环\nUser → LLM → Tool → Result"]
             CtxMgr["📚 上下文管理\n历史压缩 / Token 控制"]
             Session["💾 会话存储\nMemory / File"]
+            Skills["🎯 Skills 技能\nSKILL.md 知识注入"]
         end
     end
 
@@ -100,6 +102,7 @@ flowchart TB
     Agent --> MsgLoop
     MsgLoop <--> CtxMgr
     MsgLoop <--> Session
+    MsgLoop <--> Skills
     MsgLoop <-->|"调用模型"| Providers
     MsgLoop <-->|"执行工具"| Tools
 ```
@@ -112,8 +115,9 @@ flowchart TD
     Channel --> Gateway[Gateway 路由]
     Gateway --> LoadCtx[加载会话上下文]
 
-    LoadCtx --> BuildCtx[构建 LLM 请求]
-    BuildCtx --> |系统提示词<br/>历史消息<br/>工具列表| CallLLM[调用 LLM]
+    LoadCtx --> LoadSkills[加载 Skills 技能]
+    LoadSkills --> BuildCtx[构建 LLM 请求]
+    BuildCtx --> |系统提示词 + Skills<br/>历史消息<br/>工具列表| CallLLM[调用 LLM]
 
     CallLLM --> Check{返回类型?}
 
@@ -131,6 +135,7 @@ flowchart TD
     style End fill:#e8f5e9
     style CallLLM fill:#fff3e0
     style ExecTool fill:#fce4ec
+    style LoadSkills fill:#f3e5f5
 ```
 
 ### 核心模块
