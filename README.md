@@ -4,13 +4,16 @@
   <img src="./docs/images/mascot.svg" width="80" alt="Mozi Mascot" />
 </p>
 
-<p align="center">
-  <sub>QQ 机器人 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 钉钉机器人</sub>
-</p>
-<p align="center">
-  <img src="./docs/images/qq.jpg" width="45%" alt="QQ 机器人" />
-  <img src="./docs/images/dingding.jpg" width="45%" alt="钉钉机器人" />
-</p>
+<table align="center">
+  <tr>
+    <td align="center"><sub>QQ 机器人</sub></td>
+    <td align="center"><sub>钉钉机器人</sub></td>
+  </tr>
+  <tr>
+    <td><img src="./docs/images/qq.jpg" width="400" alt="QQ 机器人" /></td>
+    <td><img src="./docs/images/dingding.jpg" width="400" alt="钉钉机器人" /></td>
+  </tr>
+</table>
 
 **支持国产大模型和国产通讯软件的智能助手框架**
 
