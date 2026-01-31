@@ -241,7 +241,7 @@ program
 // 配置引导命令
 program
   .command("onboard")
-  .description("配置引导向导")
+  .description("配置引导向导（模型/平台/服务器/Agent/记忆系统）")
   .action(async () => {
     const readline = await import("readline");
     const fs = await import("fs");

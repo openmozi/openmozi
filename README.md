@@ -16,6 +16,7 @@ Mozi 是一个轻量级的 AI 助手框架，专注于国产生态。它提供�
 - **Function Calling** — 原生支持 OpenAI tools/tool_choice 参数
 - **20 内置工具** — 文件读写、Bash 执行、代码搜索、网页获取、图像分析、浏览器自动化、记忆系统等
 - **Skills 技能系统** — 通过 SKILL.md 文件扩展 Agent 能力，支持自定义行为和专业知识注入
+- **记忆系统** — 跨会话长期记忆，自动记住用户偏好和重要信息
 - **会话管理** — 上下文压缩、会话持久化、多轮对话
 - **可扩展** — 插件系统、Hook 事件、自定义工具、子 Agent
 
@@ -66,6 +67,7 @@ mozi onboard
 - **自定义 OpenAI 兼容接口** — 支持任意 OpenAI API 格式的服务（如 vLLM、Ollama）
 - **自定义 Anthropic 兼容接口** — 支持任意 Claude API 格式的服务
 - **通讯平台** — QQ、飞书、钉钉、企业微信
+- **记忆系统** — 启用/禁用长期记忆、自定义存储目录
 
 配置文件将保存到 `~/.mozi/config.local.json5`。
 
@@ -490,6 +492,12 @@ mozi start
     workspaceDir: "./.mozi/skills", // 工作区级技能目录
     disabled: ["skill-name"],      // 禁用指定技能
     only: ["skill-name"]           // 仅启用指定技能
+  },
+
+  // 记忆系统配置（可选）
+  memory: {
+    enabled: true,                  // 是否启用（默认 true）
+    storageDir: "~/.mozi/memory"   // 存储目录（默认 ~/.mozi/memory）
   }
 }
 ```
@@ -579,6 +587,42 @@ priority: 10
 }
 ```
 
+## 记忆系统
+
+记忆系统让 Agent 能够跨会话记住重要信息，如用户偏好、关键事实、任务上下文等。记忆默认启用，存储在 `~/.mozi/memory/` 目录。
+
+### 工作原理
+
+Agent 通过三个内置工具管理记忆：
+
+| 工具 | 说明 |
+|------|------|
+| `memory_store` | 存储一条新记忆（包含内容和标签） |
+| `memory_query` | 根据关键词查询相关记忆 |
+| `memory_list` | 列出所有已存储的记忆 |
+
+Agent 会在对话中自动判断何时需要存储或查询记忆，无需用户手动触发。例如：
+
+- 用户说 "我喜欢简洁的代码风格" → Agent 自动调用 `memory_store` 存储偏好
+- 用户问 "我之前说过喜欢什么风格？" → Agent 自动调用 `memory_query` 查询
+
+### 配置
+
+```json5
+{
+  memory: {
+    enabled: true,                  // 是否启用（默认 true）
+    storageDir: "~/.mozi/memory"   // 存储目录（默认 ~/.mozi/memory）
+  }
+}
+```
+
+也可以通过 `mozi onboard` 向导配置记忆系统（步骤 5/5）。
+
+### 存储结构
+
+记忆以 JSON 文件存储，每条记忆包含内容、标签和时间戳，支持按关键词检索。
+
 ## 内置工具
 
 | 类别 | 工具 | 说明 |
@@ -608,7 +652,7 @@ priority: 10
 
 ```bash
 # 配置
-mozi onboard            # 配置向导（支持国产模型/自定义接口）
+mozi onboard            # 配置向导（模型/平台/服务器/Agent/记忆系统）
 mozi check              # 检查配置
 mozi models             # 列出可用模型
 
@@ -711,7 +755,8 @@ flowchart TB
             T2["⌨️ Bash 执行\n命令行 / 进程管理"]
             T3["🌐 网络请求\nsearch/fetch"]
             T4["🖼️ 多媒体\n图像分析 / 浏览器"]
-            T5["🤖 子 Agent\n复杂任务分解"]
+            T5["🧠 记忆系统\n长期记忆存储 / 查询"]
+            T6["🤖 子 Agent\n复杂任务分解"]
         end
     end
 
@@ -788,6 +833,7 @@ flowchart TD
 - **消息循环** — 用户输入 → LLM 推理 → 工具调用 → 结果反馈
 - **上下文管理** — 会话历史、Token 压缩、多轮对话
 - **工具系统** — 函数定义、参数校验、结果处理
+- **记忆系统** — 跨会话长期记忆、存储与检索
 - **技能系统** — SKILL.md 加载、知识注入、系统提示词扩展
 - **流式输出** — SSE/WebSocket 实时响应
 - **失败重试** — 模型调用失败自动切换备选模型
