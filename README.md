@@ -660,6 +660,11 @@ mozi start              # 完整服务（含 QQ/飞书/钉钉）
 mozi start --web-only   # 仅 WebChat
 mozi start --port 8080  # 指定端口
 
+# 服务管理
+mozi status             # 查看服务状态（进程数、CPU/内存、健康检查）
+mozi restart            # 重启服务（支持 --web-only 等选项）
+mozi kill               # 停止服务（别名：mozi stop）
+
 # 聊天
 mozi chat               # 命令行聊天
 
