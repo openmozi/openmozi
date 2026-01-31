@@ -17,6 +17,78 @@ const MINIMAX_BASE_URL = "https://api.minimax.chat/v1";
 
 /** MiniMax 模型定义 */
 const MINIMAX_MODELS: ModelDefinition[] = [
+  // MiniMax M2.1 系列 (最新旗舰)
+  {
+    id: "MiniMax-M2.1",
+    name: "MiniMax M2.1",
+    provider: "minimax",
+    api: "minimax-v1",
+    contextWindow: 1000000,
+    maxTokens: 65536,
+    supportsVision: false,
+    supportsReasoning: true,
+    cost: {
+      input: 0.8,
+      output: 8,
+    },
+  },
+  {
+    id: "MiniMax-M2.1-lightning",
+    name: "MiniMax M2.1 Lightning (快速)",
+    provider: "minimax",
+    api: "minimax-v1",
+    contextWindow: 1000000,
+    maxTokens: 65536,
+    supportsVision: false,
+    supportsReasoning: true,
+    cost: {
+      input: 0.8,
+      output: 8,
+    },
+  },
+  // MiniMax M1 系列
+  {
+    id: "MiniMax-M1",
+    name: "MiniMax M1",
+    provider: "minimax",
+    api: "minimax-v1",
+    contextWindow: 1000000,
+    maxTokens: 65536,
+    supportsVision: false,
+    supportsReasoning: true,
+    cost: {
+      input: 0.8,
+      output: 8,
+    },
+  },
+  {
+    id: "MiniMax-Text-01",
+    name: "MiniMax Text 01",
+    provider: "minimax",
+    api: "minimax-v1",
+    contextWindow: 1000000,
+    maxTokens: 65536,
+    supportsVision: false,
+    supportsReasoning: false,
+    cost: {
+      input: 1,
+      output: 8,
+    },
+  },
+  {
+    id: "MiniMax-VL-01",
+    name: "MiniMax VL 01 (Vision)",
+    provider: "minimax",
+    api: "minimax-v1",
+    contextWindow: 1000000,
+    maxTokens: 65536,
+    supportsVision: true,
+    supportsReasoning: false,
+    cost: {
+      input: 2,
+      output: 8,
+    },
+  },
   {
     id: "abab6.5s-chat",
     name: "ABAB 6.5s Chat",

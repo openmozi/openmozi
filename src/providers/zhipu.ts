@@ -15,6 +15,49 @@ const ZHIPU_BASE_URL = "https://open.bigmodel.cn/api/paas/v4";
 
 /** 智谱 AI 模型定义 */
 const ZHIPU_MODELS: ModelDefinition[] = [
+  // GLM-Z1 推理系列 (最新)
+  {
+    id: "glm-z1-plus",
+    name: "GLM-Z1 Plus (推理)",
+    provider: "zhipu",
+    api: "openai-compatible",
+    contextWindow: 128000,
+    maxTokens: 8192,
+    supportsVision: false,
+    supportsReasoning: true,
+    cost: {
+      input: 50,
+      output: 50,
+    },
+  },
+  {
+    id: "glm-z1-flash",
+    name: "GLM-Z1 Flash (推理)",
+    provider: "zhipu",
+    api: "openai-compatible",
+    contextWindow: 128000,
+    maxTokens: 8192,
+    supportsVision: false,
+    supportsReasoning: true,
+    cost: {
+      input: 0,  // 免费
+      output: 0,
+    },
+  },
+  {
+    id: "glm-z1-air",
+    name: "GLM-Z1 Air (推理)",
+    provider: "zhipu",
+    api: "openai-compatible",
+    contextWindow: 128000,
+    maxTokens: 8192,
+    supportsVision: false,
+    supportsReasoning: true,
+    cost: {
+      input: 1,
+      output: 1,
+    },
+  },
   // GLM 最新系列 (2025)
   {
     id: "glm-4.7",

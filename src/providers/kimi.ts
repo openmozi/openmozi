@@ -9,6 +9,36 @@ const KIMI_BASE_URL = "https://api.moonshot.cn/v1";
 
 /** Kimi 模型定义 */
 const KIMI_MODELS: ModelDefinition[] = [
+  // Kimi K2.5 系列 (最新旗舰)
+  {
+    id: "kimi-k2.5",
+    name: "Kimi K2.5",
+    provider: "kimi",
+    api: "openai-compatible",
+    contextWindow: 128000,
+    maxTokens: 65536,
+    supportsVision: true,
+    supportsReasoning: true,
+    cost: {
+      input: 60,
+      output: 60,
+    },
+  },
+  {
+    id: "kimi-latest",
+    name: "Kimi Latest",
+    provider: "kimi",
+    api: "openai-compatible",
+    contextWindow: 128000,
+    maxTokens: 65536,
+    supportsVision: true,
+    supportsReasoning: false,
+    cost: {
+      input: 60,
+      output: 60,
+    },
+  },
+  // Moonshot V1 系列
   {
     id: "moonshot-v1-8k",
     name: "Moonshot V1 8K",
@@ -48,20 +78,6 @@ const KIMI_MODELS: ModelDefinition[] = [
     supportsReasoning: false,
     cost: {
       input: 60,   // ¥60/百万 token
-      output: 60,
-    },
-  },
-  {
-    id: "kimi-latest",
-    name: "Kimi Latest",
-    provider: "kimi",
-    api: "openai-compatible",
-    contextWindow: 128000,
-    maxTokens: 65536,
-    supportsVision: true,
-    supportsReasoning: false,
-    cost: {
-      input: 60,
       output: 60,
     },
   },

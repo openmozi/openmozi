@@ -9,6 +9,36 @@ const STEPFUN_BASE_URL = "https://api.stepfun.com/v1";
 
 /** Stepfun 模型定义 */
 const STEPFUN_MODELS: ModelDefinition[] = [
+  // Step-2 系列 (最新一代)
+  {
+    id: "step-2-mini",
+    name: "Step 2 Mini (推荐)",
+    provider: "stepfun",
+    api: "openai-compatible",
+    contextWindow: 32000,
+    maxTokens: 8192,
+    supportsVision: false,
+    supportsReasoning: true,
+    cost: {
+      input: 10,
+      output: 40,
+    },
+  },
+  {
+    id: "step-2-16k",
+    name: "Step 2 16K",
+    provider: "stepfun",
+    api: "openai-compatible",
+    contextWindow: 16000,
+    maxTokens: 8192,
+    supportsVision: false,
+    supportsReasoning: true,
+    cost: {
+      input: 38,
+      output: 120,
+    },
+  },
+  // Step-1 系列
   {
     id: "step-1-8k",
     name: "Step 1 8K",
@@ -91,20 +121,6 @@ const STEPFUN_MODELS: ModelDefinition[] = [
     cost: {
       input: 24,
       output: 96,
-    },
-  },
-  {
-    id: "step-2-16k",
-    name: "Step 2 16K",
-    provider: "stepfun",
-    api: "openai-compatible",
-    contextWindow: 16000,
-    maxTokens: 8192,
-    supportsVision: false,
-    supportsReasoning: true,
-    cost: {
-      input: 38,
-      output: 120,
     },
   },
 ];

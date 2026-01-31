@@ -15,6 +15,63 @@ const DASHSCOPE_BASE_URL = "https://dashscope.aliyuncs.com/compatible-mode/v1";
 
 /** DashScope 模型定义 */
 const DASHSCOPE_MODELS: ModelDefinition[] = [
+  // Qwen3 系列 (最新一代)
+  {
+    id: "qwen3-235b-a22b",
+    name: "Qwen3 235B (MoE)",
+    provider: "dashscope",
+    api: "openai-compatible",
+    contextWindow: 131072,
+    maxTokens: 8192,
+    supportsVision: false,
+    supportsReasoning: true,
+    cost: {
+      input: 4,
+      output: 16,
+    },
+  },
+  {
+    id: "qwen3-32b",
+    name: "Qwen3 32B",
+    provider: "dashscope",
+    api: "openai-compatible",
+    contextWindow: 131072,
+    maxTokens: 8192,
+    supportsVision: false,
+    supportsReasoning: true,
+    cost: {
+      input: 2,
+      output: 8,
+    },
+  },
+  {
+    id: "qwen3-14b",
+    name: "Qwen3 14B",
+    provider: "dashscope",
+    api: "openai-compatible",
+    contextWindow: 131072,
+    maxTokens: 8192,
+    supportsVision: false,
+    supportsReasoning: true,
+    cost: {
+      input: 1,
+      output: 4,
+    },
+  },
+  {
+    id: "qwen3-8b",
+    name: "Qwen3 8B",
+    provider: "dashscope",
+    api: "openai-compatible",
+    contextWindow: 131072,
+    maxTokens: 8192,
+    supportsVision: false,
+    supportsReasoning: true,
+    cost: {
+      input: 0.5,
+      output: 2,
+    },
+  },
   // Qwen-Max 系列 (最强能力)
   {
     id: "qwen-max",

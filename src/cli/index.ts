@@ -311,21 +311,21 @@ program
         }
       }
 
-      const zhipuKey = await question("智谱AI API Key (GLM-4系列，有免费额度): ");
+      const zhipuKey = await question("智谱AI API Key (GLM系列，有免费额度): ");
       if (zhipuKey.trim()) {
         config.providers["zhipu"] = { apiKey: zhipuKey.trim() };
         if (!defaultProvider) {
           defaultProvider = "zhipu";
-          defaultModel = "glm-4-flash";
+          defaultModel = "glm-z1-flash";
         }
       }
 
-      const dashscopeKey = await question("DashScope API Key (阿里云灵积，通义千问商业版): ");
+      const dashscopeKey = await question("DashScope API Key (阿里云灵积，通义千问/Qwen3): ");
       if (dashscopeKey.trim()) {
         config.providers["dashscope"] = { apiKey: dashscopeKey.trim() };
         if (!defaultProvider) {
           defaultProvider = "dashscope";
-          defaultModel = "qwen-plus";
+          defaultModel = "qwen3-235b-a22b";
         }
       }
 
@@ -334,7 +334,7 @@ program
         config.providers["kimi"] = { apiKey: kimiKey.trim() };
         if (!defaultProvider) {
           defaultProvider = "kimi";
-          defaultModel = "moonshot-v1-8k";
+          defaultModel = "kimi-k2.5";
         }
       }
 
@@ -343,7 +343,7 @@ program
         config.providers["stepfun"] = { apiKey: stepfunKey.trim() };
         if (!defaultProvider) {
           defaultProvider = "stepfun";
-          defaultModel = "step-1-8k";
+          defaultModel = "step-2-mini";
         }
       }
 
@@ -356,7 +356,7 @@ program
         };
         if (!defaultProvider) {
           defaultProvider = "minimax";
-          defaultModel = "abab6.5s-chat";
+          defaultModel = "MiniMax-M2.1";
         }
       }
 
@@ -365,7 +365,7 @@ program
         config.providers["modelscope"] = { apiKey: modelscopeKey.trim() };
         if (!defaultProvider) {
           defaultProvider = "modelscope";
-          defaultModel = "qwen2.5-72b-instruct";
+          defaultModel = "Qwen/Qwen2.5-72B-Instruct";
         }
       }
     }
