@@ -1,6 +1,10 @@
 # Mozi (墨子)
 
 <p align="center">
+  <img src="./docs/images/mascot.svg" width="80" alt="Mozi Mascot" />
+</p>
+
+<p align="center">
   <img src="./docs/images/qq.jpg" width="45%" alt="QQ 机器人" />
   <img src="./docs/images/dingding.jpg" width="45%" alt="钉钉机器人" />
 </p>
