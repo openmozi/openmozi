@@ -710,6 +710,166 @@ function generateJson5(obj: unknown, indent = 0): string {
   return String(obj);
 }
 
+// 停止服务命令
+program
+  .command("kill")
+  .alias("stop")
+  .description("停止运行中的 Mozi 服务")
+  .action(async () => {
+    const { execSync } = await import("child_process");
+
+    try {
+      // 查找 mozi 相关进程
+      const result = execSync('pgrep -f "node.*dist/cli.*start" 2>/dev/null || echo ""', { encoding: "utf-8" });
+      const pids = result.trim().split("\n").filter(Boolean);
+
+      if (pids.length === 0) {
+        console.log("没有找到运行中的 Mozi 服务");
+        return;
+      }
+
+      console.log(`找到 ${pids.length} 个 Mozi 进程: ${pids.join(", ")}`);
+
+      // 终止进程
+      for (const pid of pids) {
+        try {
+          process.kill(parseInt(pid, 10), "SIGTERM");
+          console.log(`✅ 已发送终止信号到进程 ${pid}`);
+        } catch (err) {
+          console.error(`❌ 无法终止进程 ${pid}:`, err instanceof Error ? err.message : err);
+        }
+      }
+
+      // 等待进程退出
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+
+      // 检查是否还有进程在运行
+      const remaining = execSync('pgrep -f "node.*dist/cli.*start" 2>/dev/null || echo ""', { encoding: "utf-8" }).trim();
+      if (remaining) {
+        console.log("⚠️  部分进程仍在运行，尝试强制终止...");
+        execSync(`pkill -9 -f "node.*dist/cli.*start" 2>/dev/null || true`);
+      }
+
+      console.log("🛑 Mozi 服务已停止");
+    } catch (error) {
+      console.error("停止服务时出错:", error instanceof Error ? error.message : error);
+      process.exit(1);
+    }
+  });
+
+// 重启服务命令
+program
+  .command("restart")
+  .description("重启 Mozi 服务")
+  .option("-c, --config <path>", "配置文件路径")
+  .option("-p, --port <port>", "服务器端口")
+  .option("--web-only", "仅启用 WebChat")
+  .action(async (options) => {
+    const { execSync, spawn: spawnProcess } = await import("child_process");
+
+    console.log("🔄 正在重启 Mozi 服务...\n");
+
+    // 1. 停止现有服务
+    try {
+      const result = execSync('pgrep -f "node.*dist/cli.*start" 2>/dev/null || echo ""', { encoding: "utf-8" });
+      const pids = result.trim().split("\n").filter(Boolean);
+
+      if (pids.length > 0) {
+        console.log(`停止现有服务 (PID: ${pids.join(", ")})...`);
+        execSync(`pkill -f "node.*dist/cli.*start" 2>/dev/null || true`);
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+      }
+    } catch {
+      // 忽略错误
+    }
+
+    // 2. 启动新服务
+    console.log("启动新服务...\n");
+
+    const args = ["start"];
+    if (options.config) args.push("-c", options.config);
+    if (options.port) args.push("-p", options.port);
+    if (options.webOnly) args.push("--web-only");
+
+    // 使用当前进程直接启动（而不是后台）
+    try {
+      const config = loadConfig({ configPath: options.config });
+
+      if (options.port) {
+        config.server.port = parseInt(options.port, 10);
+      }
+
+      const errors = validateRequiredConfig(config, { webOnly: options.webOnly });
+      if (errors.length > 0) {
+        console.error("❌ 配置错误:");
+        errors.forEach((err) => console.error(`   - ${err}`));
+        process.exit(1);
+      }
+
+      await startGateway(config);
+    } catch (error) {
+      console.error("❌ 重启失败:", error instanceof Error ? error.message : error);
+      process.exit(1);
+    }
+  });
+
+// 服务状态命令
+program
+  .command("status")
+  .description("查看 Mozi 服务状态")
+  .action(async () => {
+    const { execSync } = await import("child_process");
+
+    console.log("\n📊 Mozi 服务状态\n");
+
+    try {
+      // 查找 mozi 进程
+      const result = execSync('ps aux | grep -E "node.*dist/cli.*start" | grep -v grep 2>/dev/null || echo ""', { encoding: "utf-8" });
+      const lines = result.trim().split("\n").filter(Boolean);
+
+      if (lines.length === 0) {
+        console.log("状态: 🔴 未运行");
+        console.log("\n提示: 使用 'mozi start' 或 'mozi start --web-only' 启动服务");
+        return;
+      }
+
+      console.log("状态: 🟢 运行中");
+      console.log(`进程数: ${lines.length}\n`);
+
+      for (const line of lines) {
+        const parts = line.split(/\s+/);
+        const pid = parts[1];
+        const cpu = parts[2];
+        const mem = parts[3];
+        const time = parts[9];
+        const cmd = parts.slice(10).join(" ").slice(0, 60);
+
+        console.log(`  PID: ${pid}`);
+        console.log(`  CPU: ${cpu}%  内存: ${mem}%`);
+        console.log(`  运行时间: ${time}`);
+        console.log(`  命令: ${cmd}...`);
+        console.log("");
+      }
+
+      // 检查健康状态
+      try {
+        const config = loadConfig();
+        const port = config.server?.port || 3000;
+        const health = execSync(`curl -s http://localhost:${port}/health 2>/dev/null || echo ""`, { encoding: "utf-8" }).trim();
+
+        if (health) {
+          const healthData = JSON.parse(health);
+          console.log(`健康检查: ✅ ${healthData.status}`);
+          console.log(`服务地址: http://localhost:${port}`);
+        }
+      } catch {
+        // 忽略健康检查错误
+      }
+    } catch (error) {
+      console.error("检查状态时出错:", error instanceof Error ? error.message : error);
+    }
+  });
+
 // 日志查看命令
 program
   .command("logs")
