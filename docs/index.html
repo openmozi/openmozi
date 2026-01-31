@@ -180,6 +180,17 @@
       font-weight: 500;
       margin-bottom: 28px;
     }
+    .hero-mascot {
+      margin-bottom: 24px;
+      animation: float 3s ease-in-out infinite;
+    }
+    .hero-mascot img {
+      filter: drop-shadow(0 8px 24px rgba(16, 185, 129, 0.3));
+    }
+    @keyframes float {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-10px); }
+    }
     .hero-badge .badge-dot {
       width: 6px;
       height: 6px;
@@ -828,7 +839,7 @@
   <nav>
     <div class="container">
       <div class="nav-brand">
-        <div class="logo-icon">M</div>
+        <img src="./images/mascot.svg" alt="Mozi" width="36" height="36" class="nav-mascot" />
         <span>Mozi</span>
       </div>
       <ul class="nav-links" id="navLinks">
@@ -845,6 +856,10 @@
   <!-- HERO -->
   <section class="hero">
     <div class="container">
+      <!-- 吉祥物 -->
+      <div class="hero-mascot">
+        <img src="./images/mascot.svg" alt="墨子先生" width="120" height="120" />
+      </div>
       <div class="hero-badge">
         <span class="badge-dot"></span>
         v1.6.2 &mdash; 专注国产生态
@@ -1256,7 +1271,7 @@
     <div class="container">
       <div class="footer-content">
         <div class="footer-brand">
-          <div class="logo-icon">M</div>
+          <img src="./images/mascot.svg" alt="Mozi" width="32" height="32" />
           <span>Mozi (墨子)</span>
         </div>
         <div class="footer-links">

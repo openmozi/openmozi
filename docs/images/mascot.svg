@@ -1,0 +1,100 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">
+  <defs>
+    <!-- 绿色发光效果 -->
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <!-- 渐变 -->
+    <linearGradient id="robeGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#1a2332"/>
+      <stop offset="100%" style="stop-color:#0a0f1a"/>
+    </linearGradient>
+    <linearGradient id="glassGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#10b981"/>
+      <stop offset="100%" style="stop-color:#3b82f6"/>
+    </linearGradient>
+    <linearGradient id="skinGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#fde8d7"/>
+      <stop offset="100%" style="stop-color:#f5d5c3"/>
+    </linearGradient>
+  </defs>
+
+  <!-- 背景圆 -->
+  <circle cx="100" cy="100" r="95" fill="#050810" stroke="#1a2332" stroke-width="2"/>
+
+  <!-- 身体/长袍 -->
+  <path d="M60 120 Q55 140 50 175 L150 175 Q145 140 140 120 Q120 115 100 115 Q80 115 60 120"
+        fill="url(#robeGradient)" stroke="#2a3a52" stroke-width="1"/>
+
+  <!-- 长袍电路纹路 -->
+  <path d="M70 135 L80 135 L85 140 L95 140" stroke="#3b82f6" stroke-width="1.5" fill="none" opacity="0.6"/>
+  <path d="M130 135 L120 135 L115 140 L105 140" stroke="#3b82f6" stroke-width="1.5" fill="none" opacity="0.6"/>
+  <circle cx="95" cy="140" r="2" fill="#3b82f6" opacity="0.8"/>
+  <circle cx="105" cy="140" r="2" fill="#3b82f6" opacity="0.8"/>
+  <path d="M75 155 L90 155 L95 160" stroke="#10b981" stroke-width="1" fill="none" opacity="0.5"/>
+  <path d="M125 155 L110 155 L105 160" stroke="#10b981" stroke-width="1" fill="none" opacity="0.5"/>
+
+  <!-- 领口 -->
+  <path d="M85 115 L100 125 L115 115" fill="none" stroke="#3b82f6" stroke-width="2" opacity="0.8"/>
+
+  <!-- 头部 -->
+  <ellipse cx="100" cy="70" rx="40" ry="42" fill="url(#skinGradient)"/>
+
+  <!-- 发髻 -->
+  <ellipse cx="100" cy="30" rx="15" ry="12" fill="#1a1a2e"/>
+  <rect x="95" y="28" width="10" height="15" fill="#1a1a2e"/>
+  <!-- 发髻上的 LED -->
+  <circle cx="100" cy="25" r="4" fill="#10b981" filter="url(#glow)"/>
+
+  <!-- 头发 -->
+  <path d="M60 65 Q60 40 80 35 Q90 32 100 32 Q110 32 120 35 Q140 40 140 65 Q130 55 100 55 Q70 55 60 65"
+        fill="#1a1a2e"/>
+
+  <!-- VR眼镜框 -->
+  <rect x="55" y="58" width="90" height="28" rx="8" fill="#111827" stroke="#2a3a52" stroke-width="2"/>
+
+  <!-- VR眼镜镜片 - 左 -->
+  <rect x="60" y="62" width="35" height="20" rx="4" fill="url(#glassGradient)" opacity="0.9"/>
+  <!-- VR眼镜镜片 - 右 -->
+  <rect x="105" y="62" width="35" height="20" rx="4" fill="url(#glassGradient)" opacity="0.9"/>
+
+  <!-- 眼镜反光效果 -->
+  <path d="M65 65 L80 65" stroke="white" stroke-width="2" opacity="0.4" stroke-linecap="round"/>
+  <path d="M110 65 L125 65" stroke="white" stroke-width="2" opacity="0.4" stroke-linecap="round"/>
+
+  <!-- 眼镜上的数据流 -->
+  <text x="70" y="77" font-family="monospace" font-size="6" fill="white" opacity="0.8">01</text>
+  <text x="115" y="77" font-family="monospace" font-size="6" fill="white" opacity="0.8">AI</text>
+
+  <!-- 鼻子 -->
+  <ellipse cx="100" cy="90" rx="3" ry="4" fill="#e8c4b0"/>
+
+  <!-- 微笑 -->
+  <path d="M88 100 Q100 110 112 100" fill="none" stroke="#5a4a42" stroke-width="2" stroke-linecap="round"/>
+
+  <!-- 腮红 -->
+  <ellipse cx="70" cy="95" rx="8" ry="5" fill="#ffb3b3" opacity="0.3"/>
+  <ellipse cx="130" cy="95" rx="8" ry="5" fill="#ffb3b3" opacity="0.3"/>
+
+  <!-- 左手 + 竹简 -->
+  <ellipse cx="50" cy="145" rx="10" ry="12" fill="url(#skinGradient)"/>
+  <!-- 竹简 -->
+  <rect x="30" y="135" width="25" height="35" rx="3" fill="#8B7355" stroke="#5D4E37" stroke-width="1"/>
+  <line x1="35" y1="140" x2="35" y2="165" stroke="#5D4E37" stroke-width="1"/>
+  <line x1="40" y1="140" x2="40" y2="165" stroke="#5D4E37" stroke-width="1"/>
+  <line x1="45" y1="140" x2="45" y2="165" stroke="#5D4E37" stroke-width="1"/>
+  <line x1="50" y1="140" x2="50" y2="165" stroke="#5D4E37" stroke-width="1"/>
+  <!-- 竹简上的代码 -->
+  <text x="33" y="150" font-family="monospace" font-size="4" fill="#10b981">&lt;/&gt;</text>
+  <text x="33" y="158" font-family="monospace" font-size="4" fill="#3b82f6">fn()</text>
+
+  <!-- 右手 -->
+  <ellipse cx="150" cy="145" rx="10" ry="12" fill="url(#skinGradient)"/>
+
+  <!-- 名字标签 -->
+  <text x="100" y="192" text-anchor="middle" font-family="system-ui, sans-serif" font-size="12" font-weight="bold" fill="#10b981">墨子</text>
+</svg>
