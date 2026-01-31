@@ -275,18 +275,20 @@ program
       channels: Record<string, unknown>;
       agent: Record<string, unknown>;
       server: Record<string, unknown>;
+      memory: Record<string, unknown>;
     } = {
       providers: {},
       channels: {},
       agent: {},
       server: {},
+      memory: {},
     };
 
     let defaultProvider = "";
     let defaultModel = "";
 
     // 步骤 1: 选择配置模式
-    console.log("\n📦 步骤 1/4: 选择提供商类型\n");
+    console.log("\n📦 步骤 1/5: 选择提供商类型\n");
     console.log("  1. 国产模型 (DeepSeek, 智谱AI, DashScope, Kimi, 阶跃星辰, MiniMax, ModelScope)");
     console.log("  2. 自定义 OpenAI 兼容接口 (支持任意 OpenAI API 格式的服务)");
     console.log("  3. 自定义 Anthropic 兼容接口 (支持任意 Claude API 格式的服务)");
@@ -501,7 +503,7 @@ program
     }
 
     // 步骤 2: 通道配置
-    console.log("\n📱 步骤 2/4: 配置通讯平台\n");
+    console.log("\n📱 步骤 2/5: 配置通讯平台\n");
     console.log("支持的平台: 飞书, 钉钉, QQ");
     console.log("(可选配置，直接回车跳过)\n");
 
@@ -545,7 +547,7 @@ program
     }
 
     // 步骤 3: 服务器配置
-    console.log("\n🌐 步骤 3/4: 配置服务器\n");
+    console.log("\n🌐 步骤 3/5: 配置服务器\n");
 
     const port = await question("服务器端口 (默认 3000): ");
     config.server = {
@@ -553,7 +555,7 @@ program
     };
 
     // 步骤 4: Agent 配置
-    console.log("\n🤖 步骤 4/4: 配置 Agent\n");
+    console.log("\n🤖 步骤 4/5: 配置 Agent\n");
 
     if (defaultProvider && defaultModel) {
       console.log(`检测到默认模型: ${defaultProvider} / ${defaultModel}`);
@@ -576,6 +578,29 @@ program
       };
     }
 
+    // 步骤 5: 记忆系统配置
+    console.log("\n🧠 步骤 5/5: 配置记忆系统\n");
+    console.log("记忆系统可让 Agent 记住跨会话的信息（如用户偏好、重要事实等）");
+    console.log("记忆默认启用，存储在 ~/.mozi/memory/ 目录\n");
+
+    const configMemory = await question("是否自定义记忆系统配置? (y/n，默认 n): ");
+    if (configMemory.toLowerCase() === "y") {
+      const memoryEnabled = await question("是否启用记忆系统? (y/n，默认 y): ");
+      const isEnabled = memoryEnabled.toLowerCase() !== "n";
+
+      if (isEnabled) {
+        const storageDir = await question("记忆存储目录 (默认 ~/.mozi/memory): ");
+        config.memory = {
+          enabled: true,
+          storageDir: storageDir.trim() || undefined,
+        };
+      } else {
+        config.memory = {
+          enabled: false,
+        };
+      }
+    }
+
     // 写入配置文件
     console.log("\n");
 
@@ -589,6 +614,7 @@ program
     // 清理空对象
     if (Object.keys(config.channels).length === 0) delete (config as Record<string, unknown>).channels;
     if (Object.keys(config.agent).length === 0) delete (config as Record<string, unknown>).agent;
+    if (Object.keys(config.memory).length === 0) delete (config as Record<string, unknown>).memory;
 
     // 生成 JSON5 格式配置
     const configContent = generateJson5(config);
