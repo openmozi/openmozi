@@ -110,28 +110,77 @@ class SimpleEmbedding implements EmbeddingProvider {
 
 // ============== API 嵌入 (使用 AI 提供商) ==============
 
+import type { BaseProvider } from "../providers/base.js";
+
+/** Provider-based Embedding (使用 Provider 的 embed 方法) */
+export class ProviderEmbedding implements EmbeddingProvider {
+  dimension = 1536; // 默认 OpenAI 维度，实际可能不同
+  private provider: BaseProvider;
+  private model?: string;
+  private fallback: SimpleEmbedding;
+
+  constructor(provider: BaseProvider, model?: string) {
+    this.provider = provider;
+    this.model = model;
+    this.fallback = new SimpleEmbedding();
+  }
+
+  async embed(texts: string[]): Promise<number[][]> {
+    if (!this.provider.supportsEmbedding()) {
+      logger.debug("Provider does not support embedding, using fallback");
+      return this.fallback.embed(texts);
+    }
+
+    try {
+      const embeddings = await this.provider.embed(texts, this.model);
+      // 更新实际维度
+      if (embeddings.length > 0 && embeddings[0]) {
+        this.dimension = embeddings[0].length;
+      }
+      return embeddings;
+    } catch (error) {
+      logger.warn({ error }, "Provider embedding failed, using fallback");
+      return this.fallback.embed(texts);
+    }
+  }
+}
+
 class APIEmbedding implements EmbeddingProvider {
   dimension = 1536; // OpenAI 默认
   private provider: ProviderId;
   private model: string;
+  private fallback: SimpleEmbedding;
 
   constructor(provider: ProviderId, model?: string) {
     this.provider = provider;
     this.model = model ?? "text-embedding-ada-002";
+    this.fallback = new SimpleEmbedding();
   }
 
   async embed(texts: string[]): Promise<number[][]> {
     const p = getProvider(this.provider);
     if (!p) {
-      throw new Error(`Provider not found: ${this.provider}`);
+      logger.warn(`Provider not found: ${this.provider}, using fallback`);
+      return this.fallback.embed(texts);
     }
 
-    // 使用 chat API 模拟嵌入 (大多数国内 API 不支持 embeddings)
-    // 这里简化处理，实际应该调用 embeddings API
-    logger.warn("API embedding not fully implemented, falling back to simple embedding");
+    // 检查 provider 是否支持 embedding
+    if (p.supportsEmbedding()) {
+      try {
+        const embeddings = await p.embed(texts, this.model);
+        if (embeddings.length > 0 && embeddings[0]) {
+          this.dimension = embeddings[0].length;
+        }
+        return embeddings;
+      } catch (error) {
+        logger.warn({ error }, "API embedding failed, using fallback");
+        return this.fallback.embed(texts);
+      }
+    }
 
-    const simple = new SimpleEmbedding();
-    return simple.embed(texts);
+    // Provider 不支持 embedding，使用 fallback
+    logger.debug("Provider does not support embedding, using fallback");
+    return this.fallback.embed(texts);
   }
 }
 
@@ -280,22 +329,36 @@ export class JsonMemoryStore implements MemoryStore {
 
 // ============== Memory Manager ==============
 
+/** Memory 管理器配置 */
+export interface MemoryManagerConfig {
+  enabled?: boolean;
+  directory?: string;
+  embeddingProvider?: ProviderId;
+  embeddingModel?: string;
+  /** 直接提供 Provider 实例 (优先级高于 embeddingProvider) */
+  provider?: BaseProvider;
+}
+
 /** Memory 管理器 */
 export class MemoryManager {
   private store: MemoryStore;
   private enabled: boolean;
 
-  constructor(config?: {
-    enabled?: boolean;
-    directory?: string;
-    embeddingProvider?: ProviderId;
-    embeddingModel?: string;
-  }) {
+  constructor(config?: MemoryManagerConfig) {
     this.enabled = config?.enabled ?? true;
 
-    const embedder = config?.embeddingProvider
-      ? new APIEmbedding(config.embeddingProvider, config.embeddingModel)
-      : new SimpleEmbedding();
+    let embedder: EmbeddingProvider;
+
+    if (config?.provider) {
+      // 优先使用直接提供的 Provider 实例
+      embedder = new ProviderEmbedding(config.provider, config.embeddingModel);
+    } else if (config?.embeddingProvider) {
+      // 其次使用 ProviderId
+      embedder = new APIEmbedding(config.embeddingProvider, config.embeddingModel);
+    } else {
+      // 默认使用简单 TF-IDF
+      embedder = new SimpleEmbedding();
+    }
 
     this.store = new JsonMemoryStore(config?.directory, embedder);
   }
@@ -363,11 +426,6 @@ export class MemoryManager {
 }
 
 /** 创建 Memory 管理器 */
-export function createMemoryManager(config?: {
-  enabled?: boolean;
-  directory?: string;
-  embeddingProvider?: ProviderId;
-  embeddingModel?: string;
-}): MemoryManager {
+export function createMemoryManager(config?: MemoryManagerConfig): MemoryManager {
   return new MemoryManager(config);
 }

@@ -85,4 +85,14 @@ export abstract class BaseProvider {
 
     throw new ProviderErrorImpl();
   }
+
+  /** 是否支持 embedding */
+  supportsEmbedding(): boolean {
+    return false;
+  }
+
+  /** 文本向量化 (可选实现) */
+  async embed(_texts: string[], _model?: string): Promise<number[][]> {
+    throw new Error("Embedding not supported by this provider");
+  }
 }

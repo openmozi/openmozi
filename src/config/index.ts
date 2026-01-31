@@ -71,6 +71,27 @@ const LoggingConfigSchema = z.object({
   level: z.enum(["debug", "info", "warn", "error"]).default("info"),
 });
 
+const SessionStoreConfigSchema = z.object({
+  type: z.enum(["memory", "file"]).optional().default("memory"),
+  directory: z.string().optional(),
+  ttlMs: z.number().optional(),
+});
+
+const MemoryConfigSchema = z.object({
+  enabled: z.boolean().optional().default(true),
+  directory: z.string().optional(),
+  embeddingModel: z.string().optional(),
+  embeddingProvider: z.string().optional(),
+});
+
+const SkillsConfigSchema = z.object({
+  enabled: z.boolean().optional().default(true),
+  userDir: z.string().optional(),
+  workspaceDir: z.string().optional(),
+  disabled: z.array(z.string()).optional(),
+  only: z.array(z.string()).optional(),
+});
+
 const MoziConfigSchema = z.object({
   providers: z.record(ProviderConfigSchema).optional().default({}),
   channels: z.object({
@@ -82,6 +103,9 @@ const MoziConfigSchema = z.object({
   agent: AgentConfigSchema.optional().default({}),
   server: ServerConfigSchema.optional().default({}),
   logging: LoggingConfigSchema.optional().default({}),
+  sessions: SessionStoreConfigSchema.optional(),
+  memory: MemoryConfigSchema.optional(),
+  skills: SkillsConfigSchema.optional(),
 });
 
 // ============== 配置加载 ==============
@@ -294,6 +318,15 @@ function mergeConfigs(...configs: Partial<MoziConfig>[]): Partial<MoziConfig> {
     }
     if (config.logging) {
       result.logging = { ...result.logging, ...config.logging };
+    }
+    if (config.sessions) {
+      result.sessions = { ...result.sessions, ...config.sessions };
+    }
+    if (config.memory) {
+      result.memory = { ...result.memory, ...config.memory };
+    }
+    if (config.skills) {
+      result.skills = { ...result.skills, ...config.skills };
     }
   }
 

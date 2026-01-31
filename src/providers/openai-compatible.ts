@@ -79,6 +79,26 @@ interface OpenAIStreamChunk {
   }>;
 }
 
+interface OpenAIEmbeddingRequest {
+  model: string;
+  input: string | string[];
+  encoding_format?: "float" | "base64";
+}
+
+interface OpenAIEmbeddingResponse {
+  object: string;
+  data: Array<{
+    object: string;
+    index: number;
+    embedding: number[];
+  }>;
+  model: string;
+  usage: {
+    prompt_tokens: number;
+    total_tokens: number;
+  };
+}
+
 export abstract class OpenAICompatibleProvider extends BaseProvider {
   /** 转换消息格式 */
   protected convertMessages(messages: ChatMessage[]): OpenAIMessage[] {
@@ -106,16 +126,29 @@ export abstract class OpenAICompatibleProvider extends BaseProvider {
       // assistant 消息的 tool_calls
       if (msg.tool_calls) {
         base.tool_calls = msg.tool_calls;
+        // 部分 API (如 Anthropic) 要求所有非最终 assistant 消息必须有非空 content
+        if (base.content === null || base.content === "") {
+          base.content = "\u200b"; // zero-width space 作为占位符
+        }
       }
 
       // tool 消息的 tool_call_id
       if (msg.tool_call_id) {
         base.tool_call_id = msg.tool_call_id;
+        // 确保 tool 消息的 content 非空
+        if (base.content === null || base.content === "") {
+          base.content = "{}";
+        }
       }
 
       // tool 消息的 name
       if (msg.name) {
         base.name = msg.name;
+      }
+
+      // 确保所有消息的 content 非空 (部分 API 如 Anthropic 要求)
+      if (base.content === null || base.content === "") {
+        base.content = " "; // 空格作为占位符
       }
 
       return base;
@@ -211,6 +244,7 @@ export abstract class OpenAICompatibleProvider extends BaseProvider {
 
       if (!response.ok) {
         const errorText = await response.text();
+        this.logger.error({ httpStatus: response.status, errorText: errorText.slice(0, 500) }, "HTTP error response");
         throw new Error(`HTTP ${response.status}: ${errorText}`);
       }
 
@@ -225,9 +259,53 @@ export abstract class OpenAICompatibleProvider extends BaseProvider {
 
       while (true) {
         const { done, value } = await reader.read();
-        if (done) break;
+        if (done) {
+          // Flush remaining buffer - 处理未以换行结尾的剩余数据
+          if (buffer.trim()) {
+            const remainingLines = buffer.split("\n");
+            for (const line of remainingLines) {
+              const trimmed = line.trim();
+              if (!trimmed || trimmed === "data: [DONE]") continue;
+              if (trimmed.startsWith("data: ")) {
+                try {
+                  const json = JSON.parse(trimmed.slice(6)) as OpenAIStreamChunk;
+
+                  if ((json as unknown as { error?: { message?: string } }).error) {
+                    const errorObj = json as unknown as { error: { message: string; type?: string } };
+                    this.logger.error({ error: errorObj.error }, "API returned error in stream (buffer flush)");
+                    throw new Error(errorObj.error.message || "Unknown API error");
+                  }
+
+                  currentId = json.id;
+                  const choice = json.choices[0];
+                  const delta = choice?.delta?.content ?? "";
+                  const finishReason = choice?.finish_reason;
+                  const toolCallDeltas = choice?.delta?.tool_calls;
+
+                  if (delta || finishReason || toolCallDeltas) {
+                    yield {
+                      id: currentId,
+                      delta,
+                      finishReason: finishReason ?? undefined,
+                      toolCallDeltas: toolCallDeltas?.map((tc) => ({
+                        index: tc.index,
+                        id: tc.id,
+                        type: tc.type,
+                        function: tc.function,
+                      })),
+                    };
+                  }
+                } catch (parseError) {
+                  this.logger.warn({ line: trimmed.slice(0, 200), error: parseError }, "Failed to parse SSE line (buffer flush)");
+                }
+              }
+            }
+          }
+          break;
+        }
 
         buffer += decoder.decode(value, { stream: true });
+
         const lines = buffer.split("\n");
         buffer = lines.pop() ?? "";
 
@@ -238,6 +316,14 @@ export abstract class OpenAICompatibleProvider extends BaseProvider {
           if (trimmed.startsWith("data: ")) {
             try {
               const json = JSON.parse(trimmed.slice(6)) as OpenAIStreamChunk;
+
+              // Check for error in response
+              if ((json as unknown as { error?: { message?: string } }).error) {
+                const errorObj = json as unknown as { error: { message: string; type?: string } };
+                this.logger.error({ error: errorObj.error }, "API returned error in stream");
+                throw new Error(errorObj.error.message || "Unknown API error");
+              }
+
               currentId = json.id;
               const choice = json.choices[0];
               const delta = choice?.delta?.content ?? "";
@@ -257,8 +343,9 @@ export abstract class OpenAICompatibleProvider extends BaseProvider {
                   })),
                 };
               }
-            } catch {
-              // 忽略解析错误
+            } catch (parseError) {
+              // 记录解析错误以便调试
+              this.logger.warn({ line: trimmed.slice(0, 200), error: parseError }, "Failed to parse SSE line");
             }
           }
         }
@@ -283,5 +370,50 @@ export abstract class OpenAICompatibleProvider extends BaseProvider {
       default:
         return "stop";
     }
+  }
+
+  /** 是否支持 embedding */
+  override supportsEmbedding(): boolean {
+    return true;
+  }
+
+  /** 文本向量化 */
+  override async embed(texts: string[], model?: string): Promise<number[][]> {
+    const url = `${this.baseUrl}/embeddings`;
+    const embeddingModel = model ?? this.getDefaultEmbeddingModel();
+
+    this.logger.debug({ url, model: embeddingModel, count: texts.length }, "Sending embedding request");
+
+    try {
+      const body: OpenAIEmbeddingRequest = {
+        model: embeddingModel,
+        input: texts,
+        encoding_format: "float",
+      };
+
+      const response = await fetch(url, {
+        method: "POST",
+        headers: this.getHeaders(),
+        body: JSON.stringify(body),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`HTTP ${response.status}: ${errorText}`);
+      }
+
+      const data = (await response.json()) as OpenAIEmbeddingResponse;
+
+      // 按 index 排序确保顺序正确
+      const sorted = data.data.sort((a, b) => a.index - b.index);
+      return sorted.map((item) => item.embedding);
+    } catch (error) {
+      this.handleError(error, "embed");
+    }
+  }
+
+  /** 获取默认 embedding 模型 */
+  protected getDefaultEmbeddingModel(): string {
+    return "text-embedding-3-small";
   }
 }

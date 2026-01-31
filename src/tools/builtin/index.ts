@@ -12,6 +12,7 @@ export * from "./process-registry.js";
 export * from "./process-tool.js";
 export * from "./apply-patch.js";
 export * from "./subagent.js";
+export * from "./memory.js";
 
 import type { Tool } from "../types.js";
 import { createWebSearchTool, createWebFetchTool } from "./web.js";
@@ -22,16 +23,22 @@ import { createFilesystemTools, type FilesystemToolsOptions } from "./filesystem
 import { createBashTool, type BashToolOptions } from "./bash.js";
 import { createProcessTool } from "./process-tool.js";
 import { createApplyPatchTool } from "./apply-patch.js";
+import { createMemoryTools, type MemoryToolsOptions } from "./memory.js";
+import type { MemoryManager } from "../../memory/index.js";
 
 /** 内置工具选项 */
 export interface BuiltinToolsOptions {
   image?: ImageAnalyzeToolOptions;
   filesystem?: FilesystemToolsOptions;
   bash?: BashToolOptions;
+  memory?: MemoryToolsOptions;
   enableBrowser?: boolean;
   enableFilesystem?: boolean;
   enableBash?: boolean;
   enableProcess?: boolean;
+  enableMemory?: boolean;
+  /** MemoryManager 实例 */
+  memoryManager?: MemoryManager;
 }
 
 /** 创建所有内置工具 */
@@ -69,6 +76,11 @@ export function createBuiltinTools(options?: BuiltinToolsOptions): Tool[] {
   // 浏览器工具是可选的，因为需要安装 playwright-core
   if (options?.enableBrowser) {
     tools.push(createBrowserTool());
+  }
+
+  // 记忆工具 (需要 MemoryManager 实例)
+  if (options?.enableMemory !== false && options?.memoryManager) {
+    tools.push(...createMemoryTools({ manager: options.memoryManager }));
   }
 
   return tools;

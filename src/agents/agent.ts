@@ -36,6 +36,7 @@ import { buildSystemPrompt } from "./system-prompt.js";
 import { createSessionStore, type SessionStore, type SessionData } from "./session-store.js";
 import { initSkills, type SkillsRegistry } from "../skills/index.js";
 import type { SkillsConfig } from "../skills/types.js";
+import { createMemoryManager, type MemoryManager } from "../memory/index.js";
 
 const logger = getChildLogger("agent");
 
@@ -77,6 +78,8 @@ export interface AgentOptions {
   enableFunctionCalling?: boolean;
   /** 会话存储 */
   sessionStore?: SessionStore;
+  /** MemoryManager 实例 */
+  memoryManager?: MemoryManager;
 }
 
 /** Agent 响应 */
@@ -97,7 +100,10 @@ export interface AgentResponse {
 
 /** Agent 类 */
 export class Agent {
-  private options: Required<Omit<AgentOptions, "sessionStore">> & { sessionStore: SessionStore };
+  private options: Required<Omit<AgentOptions, "sessionStore" | "memoryManager">> & {
+    sessionStore: SessionStore;
+    memoryManager?: MemoryManager;
+  };
   private tools: Tool[] = [];
   private openaiTools: OpenAIToolDefinition[] = [];
   private skillsRegistry: SkillsRegistry | null = null;
@@ -121,6 +127,7 @@ export class Agent {
       workingDirectory: options.workingDirectory ?? process.cwd(),
       enableFunctionCalling: options.enableFunctionCalling ?? true,
       sessionStore: options.sessionStore ?? createSessionStore(),
+      memoryManager: options.memoryManager,
     };
 
     // 初始化工具
@@ -135,6 +142,8 @@ export class Agent {
       filesystem: { allowedPaths: [this.options.workingDirectory] },
       bash: { allowedPaths: [this.options.workingDirectory] },
       enableBrowser: true,
+      enableMemory: !!this.options.memoryManager,
+      memoryManager: this.options.memoryManager,
     });
     registerTools(builtinTools);
     this.tools = filterToolsByPolicy(getAllTools(), this.options.toolPolicy);
@@ -887,6 +896,18 @@ export class Agent {
 
 /** 创建 Agent */
 export async function createAgent(config: MoziConfig): Promise<Agent> {
+  // 初始化 MemoryManager (如果启用)
+  let memoryManager: MemoryManager | undefined;
+  if (config.memory?.enabled !== false && config.memory) {
+    memoryManager = createMemoryManager({
+      enabled: config.memory.enabled ?? true,
+      directory: config.memory.directory,
+      embeddingProvider: config.memory.embeddingProvider,
+      embeddingModel: config.memory.embeddingModel,
+    });
+    logger.info({ directory: config.memory.directory }, "Memory system initialized");
+  }
+
   const agent = new Agent({
     model: config.agent.defaultModel,
     provider: config.agent.defaultProvider,
@@ -896,6 +917,7 @@ export async function createAgent(config: MoziConfig): Promise<Agent> {
     workingDirectory: config.agent.workingDirectory ?? process.cwd(),
     enableFunctionCalling: config.agent.enableFunctionCalling ?? true,
     sessionStore: createSessionStore(config.sessions),
+    memoryManager,
   });
 
   // 加载 Skills

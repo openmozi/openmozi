@@ -141,3 +141,15 @@ export {
   computeHmacSha256,
   aesDecrypt,
 } from "./utils/index.js";
+
+// Memory
+export {
+  MemoryManager,
+  createMemoryManager,
+  JsonMemoryStore,
+  ProviderEmbedding,
+  type MemoryEntry,
+  type MemoryStore,
+  type EmbeddingProvider,
+  type MemoryManagerConfig,
+} from "./memory/index.js";

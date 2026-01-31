@@ -14,7 +14,7 @@ Mozi 是一个轻量级的 AI 助手框架，专注于国产生态。它提供�
 - **多模型支持** — DeepSeek、DashScope (Qwen)、智谱AI、Kimi、阶跃星辰、MiniMax，以及 OpenAI/Anthropic 兼容格式
 - **多平台通道** — QQ、飞书、钉钉、企业微信，统一的消息处理接口
 - **Function Calling** — 原生支持 OpenAI tools/tool_choice 参数
-- **17 内置工具** — 文件读写、Bash 执行、代码搜索、网页获取、图像分析、浏览器自动化等
+- **20 内置工具** — 文件读写、Bash 执行、代码搜索、网页获取、图像分析、浏览器自动化、记忆系统等
 - **Skills 技能系统** — 通过 SKILL.md 文件扩展 Agent 能力，支持自定义行为和专业知识注入
 - **会话管理** — 上下文压缩、会话持久化、多轮对话
 - **可扩展** — 插件系统、Hook 事件、自定义工具、子 Agent
@@ -599,6 +599,9 @@ priority: 10
 | 系统 | `current_time` | 获取当前时间 |
 | | `calculator` | 数学计算 |
 | | `delay` | 延时等待 |
+| 记忆 | `memory_store` | 存储长期记忆 |
+| | `memory_query` | 查询相关记忆 |
+| | `memory_list` | 列出所有记忆 |
 | Agent | `subagent` | 创建子 Agent 执行复杂任务 |
 
 ## CLI 命令

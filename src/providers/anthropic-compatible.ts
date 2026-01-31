@@ -392,6 +392,7 @@ export class AnthropicCompatibleProvider extends BaseProvider {
 
       if (!response.ok) {
         const errorText = await response.text();
+        this.logger.error({ httpStatus: response.status, errorText: errorText.slice(0, 500) }, "Anthropic HTTP error");
         throw new Error(`HTTP ${response.status}: ${errorText}`);
       }
 
@@ -412,6 +413,7 @@ export class AnthropicCompatibleProvider extends BaseProvider {
         if (done) break;
 
         buffer += decoder.decode(value, { stream: true });
+
         const lines = buffer.split("\n");
         buffer = lines.pop() ?? "";
 
@@ -422,9 +424,6 @@ export class AnthropicCompatibleProvider extends BaseProvider {
           try {
             const event = JSON.parse(trimmed.slice(6)) as AnthropicStreamEvent;
 
-            // 调试日志：记录所有事件
-            this.logger.debug({ eventType: event.type, event }, "Stream event received");
-
             if (event.type === "message_start" && event.message) {
               currentId = event.message.id;
             } else if (event.type === "content_block_start" && event.content_block) {
@@ -434,7 +433,6 @@ export class AnthropicCompatibleProvider extends BaseProvider {
               if (event.content_block.type === "tool_use") {
                 const toolId = event.content_block.id!;
                 currentToolCallId = toolId;
-                this.logger.debug({ toolId, name: event.content_block.name, index: event.index }, "Tool use block started");
                 toolCallsInProgress.set(toolId, {
                   id: toolId,
                   name: event.content_block.name!,
@@ -448,22 +446,13 @@ export class AnthropicCompatibleProvider extends BaseProvider {
                   id: currentId,
                   delta: event.delta.text,
                 };
-              } else if (event.delta.type === "input_json_delta" && event.delta.partial_json) {
-                // 使用 currentToolCallId 来找到正确的 tool call
-                this.logger.debug({
-                  currentToolCallId,
-                  partial_json: event.delta.partial_json,
-                  toolCallsInProgressKeys: Array.from(toolCallsInProgress.keys()),
-                }, "input_json_delta received");
-
+              } else if (event.delta.type === "input_json_delta") {
+                // Handle tool call argument deltas (even empty ones for tools with no params)
                 const tc = toolCallsInProgress.get(currentToolCallId);
                 if (tc) {
-                  tc.arguments += event.delta.partial_json;
-                  this.logger.debug({
-                    toolId: tc.id,
-                    name: tc.name,
-                    argsLength: tc.arguments.length,
-                  }, "Tool arguments updated");
+                  if (event.delta.partial_json) {
+                    tc.arguments += event.delta.partial_json;
+                  }
 
                   yield {
                     id: currentId,
@@ -474,15 +463,10 @@ export class AnthropicCompatibleProvider extends BaseProvider {
                       type: "function",
                       function: {
                         name: tc.name,
-                        arguments: event.delta.partial_json,
+                        arguments: event.delta.partial_json ?? "",
                       },
                     }],
                   };
-                } else {
-                  this.logger.warn({
-                    currentToolCallId,
-                    partial_json: event.delta.partial_json,
-                  }, "Received input_json_delta but no matching tool call found");
                 }
               }
             } else if (event.type === "content_block_stop") {
@@ -495,8 +479,9 @@ export class AnthropicCompatibleProvider extends BaseProvider {
                 finishReason: toolCallsInProgress.size > 0 ? "tool_calls" : "stop",
               };
             }
-          } catch {
-            // 忽略解析错误
+          } catch (parseErr) {
+            // 记录解析错误
+            this.logger.warn({ line: trimmed.slice(0, 200), error: parseErr }, "Failed to parse Anthropic SSE line");
           }
         }
       }
