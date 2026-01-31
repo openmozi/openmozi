@@ -79,7 +79,12 @@ export interface EncryptedEvent {
 /** 飞书事件处理器 */
 export class FeishuEventHandler {
   private config: FeishuConfig;
-  private processedEvents = new Set<string>();
+  /** 已处理事件缓存: eventId -> timestamp */
+  private processedEvents = new Map<string, number>();
+  /** 事件缓存过期时间 (5分钟) */
+  private readonly EVENT_CACHE_TTL = 5 * 60 * 1000;
+  /** 事件缓存最大数量 */
+  private readonly EVENT_CACHE_MAX_SIZE = 10000;
 
   constructor(config: FeishuConfig) {
     this.config = config;
@@ -149,12 +154,18 @@ export class FeishuEventHandler {
       return true;
     }
 
-    // 添加到已处理集合，限制大小
-    this.processedEvents.add(eventId);
-    if (this.processedEvents.size > 10000) {
-      // 清理一半的旧事件
-      const events = Array.from(this.processedEvents);
-      this.processedEvents = new Set(events.slice(5000));
+    const now = Date.now();
+
+    // 添加到已处理缓存
+    this.processedEvents.set(eventId, now);
+
+    // 按时间过期清理
+    if (this.processedEvents.size > this.EVENT_CACHE_MAX_SIZE) {
+      for (const [id, timestamp] of this.processedEvents) {
+        if (now - timestamp > this.EVENT_CACHE_TTL) {
+          this.processedEvents.delete(id);
+        }
+      }
     }
 
     return false;

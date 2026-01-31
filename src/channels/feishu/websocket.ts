@@ -164,10 +164,15 @@ export class FeishuWebSocketClient {
   /** 停止客户端 */
   async stop(): Promise<void> {
     this.logger.info("Stopping Feishu WebSocket client");
-    // 官方 SDK 没有提供 stop 方法，设置标志位即可
     this.connected = false;
+
+    // 注意：飞书官方 SDK WSClient 未提供 stop/close API
+    // 清空引用以释放事件处理器，SDK 内部连接会随进程退出自动关闭
+    if (this.eventDispatcher) {
+      this.eventDispatcher = null;
+    }
+    this.eventHandler = null;
     this.wsClient = null;
-    this.eventDispatcher = null;
   }
 
   /** 检查是否已连接 */

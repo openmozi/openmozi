@@ -41,6 +41,10 @@ export interface WsServerOptions {
   server: HttpServer;
   agent: Agent;
   config: MoziConfig;
+  /** 心跳检测间隔 (毫秒), 默认 30000 */
+  heartbeatInterval?: number;
+  /** 客户端超时时间 (毫秒), 默认 60000 */
+  clientTimeout?: number;
 }
 
 /** WebSocket 服务器类 */
@@ -50,10 +54,14 @@ export class WsServer {
   private agent: Agent;
   private config: MoziConfig;
   private startTime = Date.now();
+  private heartbeatInterval: number;
+  private clientTimeout: number;
 
   constructor(options: WsServerOptions) {
     this.agent = options.agent;
     this.config = options.config;
+    this.heartbeatInterval = options.heartbeatInterval ?? 30000;
+    this.clientTimeout = options.clientTimeout ?? 60000;
 
     this.wss = new WebSocketServer({
       server: options.server,
@@ -65,7 +73,7 @@ export class WsServer {
     });
 
     // 心跳检测
-    setInterval(() => this.checkHeartbeat(), 30000);
+    setInterval(() => this.checkHeartbeat(), this.heartbeatInterval);
 
     logger.info("WebSocket server initialized");
   }
@@ -457,10 +465,9 @@ export class WsServer {
   /** 心跳检测 */
   private checkHeartbeat(): void {
     const now = Date.now();
-    const timeout = 60000; // 60 秒超时
 
     for (const [clientId, client] of this.clients) {
-      if (now - client.lastPing > timeout) {
+      if (now - client.lastPing > this.clientTimeout) {
         logger.info({ clientId }, "Client timeout, disconnecting");
         client.ws.terminate();
         this.clients.delete(clientId);

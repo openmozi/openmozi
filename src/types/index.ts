@@ -159,6 +159,12 @@ export interface StreamChunk {
       arguments?: string;
     };
   }>;
+  /** Token 使用统计 (通常在最后一个 chunk 中) */
+  usage?: {
+    promptTokens: number;
+    completionTokens: number;
+    totalTokens: number;
+  };
 }
 
 // ============== 通道相关类型 ==============

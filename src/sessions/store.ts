@@ -22,6 +22,31 @@ const logger = getChildLogger("sessions");
 /** 当前转录版本 */
 const TRANSCRIPT_VERSION = 1;
 
+/** 简单的写入锁实现 */
+class WriteLock {
+  private locked = false;
+  private waitQueue: Array<() => void> = [];
+
+  async acquire(): Promise<void> {
+    if (!this.locked) {
+      this.locked = true;
+      return;
+    }
+    return new Promise((resolve) => {
+      this.waitQueue.push(resolve);
+    });
+  }
+
+  release(): void {
+    const next = this.waitQueue.shift();
+    if (next) {
+      next();
+    } else {
+      this.locked = false;
+    }
+  }
+}
+
 /** 默认存储目录 */
 function getDefaultStorePath(): string {
   return path.join(os.homedir(), ".mozi", "sessions");
@@ -34,6 +59,7 @@ export class FileSessionStore {
   private cache: Map<string, SessionEntry> = new Map();
   private cacheTime = 0;
   private cacheTTL = 30_000; // 30秒缓存
+  private writeLock = new WriteLock();
 
   constructor(storePath?: string) {
     this.storePath = storePath ?? getDefaultStorePath();
@@ -74,15 +100,20 @@ export class FileSessionStore {
 
   /** 保存索引 */
   private async saveIndex(index: Map<string, SessionEntry>): Promise<void> {
-    const data = Object.fromEntries(index);
-    const content = JSON.stringify(data, null, 2);
-    const tmpFile = `${this.indexFile}.tmp`;
+    await this.writeLock.acquire();
+    try {
+      const data = Object.fromEntries(index);
+      const content = JSON.stringify(data, null, 2);
+      const tmpFile = `${this.indexFile}.${randomUUID()}.tmp`;
 
-    await fs.promises.writeFile(tmpFile, content, "utf-8");
-    await fs.promises.rename(tmpFile, this.indexFile);
+      await fs.promises.writeFile(tmpFile, content, "utf-8");
+      await fs.promises.rename(tmpFile, this.indexFile);
 
-    this.cache = index;
-    this.cacheTime = Date.now();
+      this.cache = index;
+      this.cacheTime = Date.now();
+    } finally {
+      this.writeLock.release();
+    }
   }
 
   /** 列出所有会话 */

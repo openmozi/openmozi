@@ -43,13 +43,33 @@ const DEFAULT_OPTIONS: Required<BashToolOptions> = {
   maxTimeout: 600000, // 10 分钟
   maxOutputSize: 100000, // 100KB
   blockedCommands: [
-    /\brm\s+-rf\s+[\/~]/i, // rm -rf /
+    // 危险的删除/格式化操作
+    /\brm\s+(-[a-zA-Z]*r[a-zA-Z]*\s+)?(-[a-zA-Z]*f[a-zA-Z]*\s+)?[\/~]/i,
+    /\brm\s+(-[a-zA-Z]*f[a-zA-Z]*\s+)?(-[a-zA-Z]*r[a-zA-Z]*\s+)?[\/~]/i,
     /\bmkfs\b/i,
     /\bdd\s+.*of=\/dev/i,
     /\bformat\b.*[a-z]:/i,
+    // 系统关机/重启
     /\b(poweroff|reboot|shutdown|halt)\b/i,
-    /\bkill\s+-9\s+(-1|1)\b/,
-    />\s*\/dev\/(sda|hda|nvme)/i,
+    // 危险的 kill 操作
+    /\bkill\s+(-\d+\s+)?(-1|1)\b/,
+    /\bkillall\s+-9\s+/i,
+    // 直接写入磁盘设备
+    />\s*\/dev\/(sda|hda|nvme|vda)/i,
+    // 修改系统关键文件
+    />\s*\/etc\/(passwd|shadow|sudoers)/i,
+    // 链式危险命令 (通过 ; || && 连接)
+    /;\s*(rm|mkfs|dd|format|poweroff|reboot|shutdown)\b/i,
+    /\|\|\s*(rm|mkfs|dd|format|poweroff|reboot|shutdown)\b/i,
+    /&&\s*(rm|mkfs|dd|format|poweroff|reboot|shutdown)\b/i,
+    // 通过管道执行的危险命令
+    /\|\s*(bash|sh|zsh)\s*$/i,
+    // curl/wget 直接管道到 shell
+    /\b(curl|wget)\s+.*\|\s*(bash|sh|zsh)/i,
+    // 禁止 chmod 777 对根目录
+    /\bchmod\s+(-[a-zA-Z]*R[a-zA-Z]*\s+)?777\s+[\/~]/i,
+    // 禁止修改 /etc 下的敏感文件
+    /\b(mv|cp|cat\s*>)\s+.*\/etc\/(passwd|shadow|sudoers|hosts)/i,
   ],
   enabled: true,
 };

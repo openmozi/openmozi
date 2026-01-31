@@ -79,7 +79,12 @@ export interface DingtalkStreamMessage {
 /** 钉钉事件处理器 */
 export class DingtalkEventHandler {
   private config: DingtalkConfig;
-  private processedMessages = new Set<string>();
+  /** 已处理消息缓存: msgId -> timestamp */
+  private processedMessages = new Map<string, number>();
+  /** 消息缓存过期时间 (5分钟) */
+  private readonly MESSAGE_CACHE_TTL = 5 * 60 * 1000;
+  /** 消息缓存最大数量 */
+  private readonly MESSAGE_CACHE_MAX_SIZE = 10000;
 
   constructor(config: DingtalkConfig) {
     this.config = config;
@@ -104,10 +109,18 @@ export class DingtalkEventHandler {
       return true;
     }
 
-    this.processedMessages.add(msgId);
-    if (this.processedMessages.size > 10000) {
-      const messages = Array.from(this.processedMessages);
-      this.processedMessages = new Set(messages.slice(5000));
+    const now = Date.now();
+
+    // 添加到已处理缓存
+    this.processedMessages.set(msgId, now);
+
+    // 按时间过期清理
+    if (this.processedMessages.size > this.MESSAGE_CACHE_MAX_SIZE) {
+      for (const [id, timestamp] of this.processedMessages) {
+        if (now - timestamp > this.MESSAGE_CACHE_TTL) {
+          this.processedMessages.delete(id);
+        }
+      }
     }
 
     return false;

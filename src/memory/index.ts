@@ -48,9 +48,13 @@ export interface EmbeddingProvider {
 /** 简单的词频向量嵌入 (不需要外部 API) */
 class SimpleEmbedding implements EmbeddingProvider {
   dimension = 256;
-  private vocabulary = new Map<string, number>();
+  /** 词汇表最大大小 */
+  private readonly maxVocabularySize = 50000;
+  /** 词汇表: token -> (index, lastUsedDocCount) */
+  private vocabulary = new Map<string, { index: number; lastUsed: number }>();
   private idf = new Map<string, number>();
   private docCount = 0;
+  private nextIndex = 0;
 
   /** 分词 */
   private tokenize(text: string): string[] {
@@ -66,8 +70,19 @@ class SimpleEmbedding implements EmbeddingProvider {
   private updateVocabulary(tokens: string[]): void {
     const seen = new Set<string>();
     for (const token of tokens) {
-      if (!this.vocabulary.has(token)) {
-        this.vocabulary.set(token, this.vocabulary.size % this.dimension);
+      const existing = this.vocabulary.get(token);
+      if (existing) {
+        // 更新最后使用时间
+        existing.lastUsed = this.docCount;
+      } else {
+        // 如果词汇表满了，淘汰最久未使用的词
+        if (this.vocabulary.size >= this.maxVocabularySize) {
+          this.evictLeastRecentlyUsed();
+        }
+        this.vocabulary.set(token, {
+          index: this.nextIndex++ % this.dimension,
+          lastUsed: this.docCount,
+        });
       }
       if (!seen.has(token)) {
         seen.add(token);
@@ -75,6 +90,20 @@ class SimpleEmbedding implements EmbeddingProvider {
       }
     }
     this.docCount++;
+  }
+
+  /** 淘汰最久未使用的词汇 */
+  private evictLeastRecentlyUsed(): void {
+    // 淘汰 10% 最久未使用的词
+    const evictCount = Math.floor(this.maxVocabularySize * 0.1);
+    const entries = Array.from(this.vocabulary.entries())
+      .sort((a, b) => a[1].lastUsed - b[1].lastUsed)
+      .slice(0, evictCount);
+
+    for (const [token] of entries) {
+      this.vocabulary.delete(token);
+      this.idf.delete(token);
+    }
   }
 
   /** 计算向量 */
@@ -89,7 +118,8 @@ class SimpleEmbedding implements EmbeddingProvider {
 
     // TF-IDF 向量
     for (const [token, count] of tf) {
-      const idx = this.vocabulary.get(token) ?? (token.charCodeAt(0) % this.dimension);
+      const vocabEntry = this.vocabulary.get(token);
+      const idx = vocabEntry?.index ?? (token.charCodeAt(0) % this.dimension);
       const idf = Math.log((this.docCount + 1) / (this.idf.get(token) ?? 1) + 1);
       vector[idx] += (count / tokens.length) * idf;
     }

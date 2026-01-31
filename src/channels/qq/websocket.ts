@@ -77,6 +77,7 @@ export class QQWebSocketClient {
   private apiClient: QQApiClient;
   private ws: WebSocket | null = null;
   private sessionId: string | null = null;
+  private botUserId: string | null = null;
   private sequence: number | null = null;
   private heartbeatInterval: number | null = null;
   private heartbeatTimer: NodeJS.Timeout | null = null;
@@ -264,9 +265,10 @@ export class QQWebSocketClient {
       case "READY":
         const readyData = data as ReadyData;
         this.sessionId = readyData.session_id;
+        this.botUserId = readyData.user.id;
         this.isConnected = true;
         this.reconnectAttempts = 0;
-        logger.info({ sessionId: this.sessionId, user: readyData.user }, "Ready");
+        logger.info({ sessionId: this.sessionId, botUserId: this.botUserId, user: readyData.user }, "Ready");
         break;
 
       case "RESUMED":
@@ -306,7 +308,7 @@ export class QQWebSocketClient {
     if (!this.eventHandler) return;
 
     // 过滤机器人自己的消息
-    if (data.author.id === this.sessionId) return;
+    if (this.botUserId && data.author.id === this.botUserId) return;
 
     const context: InboundMessageContext = {
       channelId: "qq",

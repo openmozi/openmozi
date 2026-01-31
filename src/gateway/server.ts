@@ -2,7 +2,7 @@
  * Gateway 服务器 - HTTP Webhook 处理 + WebChat
  */
 
-import express, { type Express, type Request, type Response } from "express";
+import express, { type Express, type Request, type Response, type NextFunction } from "express";
 import { createServer, type Server as HttpServer } from "http";
 import type { MoziConfig, InboundMessageContext } from "../types/index.js";
 import { createFeishuChannel, type FeishuChannel } from "../channels/feishu/index.js";
@@ -115,7 +115,7 @@ export class Gateway {
     });
 
     // 错误处理
-    this.app.use((err: Error, req: Request, res: Response, next: Function) => {
+    this.app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
       logger.error({ error: err }, "Unhandled error");
       res.status(500).json({ error: "Internal server error" });
     });

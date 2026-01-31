@@ -84,6 +84,10 @@ interface AnthropicStreamEvent {
     text?: string;
     partial_json?: string;
   };
+  usage?: {
+    input_tokens?: number;
+    output_tokens?: number;
+  };
 }
 
 /** 自定义 Anthropic 兼容提供商配置 */
@@ -407,6 +411,9 @@ export class AnthropicCompatibleProvider extends BaseProvider {
       // 使用 tool_use id 作为 key，而非 index (更可靠)
       const toolCallsInProgress: Map<string, { id: string; name: string; arguments: string; index: number }> = new Map();
       let currentToolCallId = "";  // 跟踪当前正在处理的 tool call
+      // 跟踪 usage 统计
+      let inputTokens = 0;
+      let outputTokens = 0;
 
       while (true) {
         const { done, value } = await reader.read();
@@ -426,6 +433,13 @@ export class AnthropicCompatibleProvider extends BaseProvider {
 
             if (event.type === "message_start" && event.message) {
               currentId = event.message.id;
+              // 记录初始 input tokens
+              if (event.message.usage) {
+                inputTokens = event.message.usage.input_tokens;
+              }
+            } else if (event.type === "message_delta" && event.usage) {
+              // Anthropic 在 message_delta 中发送最终 output_tokens
+              outputTokens = event.usage.output_tokens ?? 0;
             } else if (event.type === "content_block_start" && event.content_block) {
               // 重置当前工具调用 ID（每次新 content block 开始时）
               currentToolCallId = "";
@@ -477,6 +491,11 @@ export class AnthropicCompatibleProvider extends BaseProvider {
                 id: currentId,
                 delta: "",
                 finishReason: toolCallsInProgress.size > 0 ? "tool_calls" : "stop",
+                usage: inputTokens > 0 || outputTokens > 0 ? {
+                  promptTokens: inputTokens,
+                  completionTokens: outputTokens,
+                  totalTokens: inputTokens + outputTokens,
+                } : undefined,
               };
             }
           } catch (parseErr) {
