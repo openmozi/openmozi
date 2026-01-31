@@ -1,0 +1,119 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 200" width="800" height="200">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0f172a"/>
+      <stop offset="100%" stop-color="#1e293b"/>
+    </linearGradient>
+    <linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#10b981"/>
+      <stop offset="100%" stop-color="#3b82f6"/>
+    </linearGradient>
+    <linearGradient id="text-grad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#10b981"/>
+      <stop offset="50%" stop-color="#3b82f6"/>
+      <stop offset="100%" stop-color="#8b5cf6"/>
+    </linearGradient>
+  </defs>
+
+  <!-- 背景 -->
+  <rect width="800" height="200" fill="url(#bg)"/>
+
+  <!-- 装饰线条 -->
+  <line x1="0" y1="198" x2="800" y2="198" stroke="url(#g)" stroke-width="2" opacity="0.5"/>
+
+  <!-- 左侧装饰点 -->
+  <circle cx="30" cy="30" r="3" fill="#10b981" opacity="0.3"/>
+  <circle cx="50" cy="50" r="2" fill="#3b82f6" opacity="0.3"/>
+  <circle cx="25" cy="70" r="2" fill="#8b5cf6" opacity="0.2"/>
+
+  <!-- 吉祥物 -->
+  <g transform="translate(60, 35) scale(1.5)">
+    <!-- 背景圆 -->
+    <circle cx="40" cy="40" r="38" fill="#0f172a" stroke="#1e293b" stroke-width="2"/>
+
+    <!-- 耳朵（三角竖耳） -->
+    <path d="M12 30 L22 8 L30 28 Z" fill="#d4a054"/>
+    <path d="M15 28 L22 12 L28 26 Z" fill="#fca5a5" opacity="0.3"/>
+    <path d="M50 28 L58 8 L68 30 Z" fill="#d4a054"/>
+    <path d="M52 26 L58 12 L65 28 Z" fill="#fca5a5" opacity="0.3"/>
+
+    <!-- 头 -->
+    <ellipse cx="40" cy="46" rx="26" ry="22" fill="#e8a840"/>
+
+    <!-- 白色脸部 -->
+    <ellipse cx="40" cy="52" rx="18" ry="16" fill="#fff8f0"/>
+
+    <!-- 额头白色 -->
+    <path d="M32 34 Q40 28 48 34 L46 40 Q40 36 34 40 Z" fill="#fff8f0"/>
+
+    <!-- 眼睛 -->
+    <ellipse cx="30" cy="44" rx="4" ry="5" fill="#1a1a2e"/>
+    <circle cx="31" cy="43" r="1.5" fill="white"/>
+    <ellipse cx="50" cy="44" rx="4" ry="5" fill="#1a1a2e"/>
+    <circle cx="51" cy="43" r="1.5" fill="white"/>
+
+    <!-- 眉毛 -->
+    <ellipse cx="30" cy="38" rx="4" ry="1.5" fill="#c4903c"/>
+    <ellipse cx="50" cy="38" rx="4" ry="1.5" fill="#c4903c"/>
+
+    <!-- 腮红 -->
+    <ellipse cx="20" cy="50" rx="4" ry="2.5" fill="#fca5a5" opacity="0.4"/>
+    <ellipse cx="60" cy="50" rx="4" ry="2.5" fill="#fca5a5" opacity="0.4"/>
+
+    <!-- 鼻子 -->
+    <ellipse cx="40" cy="52" rx="4" ry="3" fill="#1a1a2e"/>
+    <ellipse cx="39" cy="51" rx="1" ry="0.8" fill="white" opacity="0.3"/>
+
+    <!-- 嘴 -->
+    <path d="M40 55 L40 58" stroke="#1a1a2e" stroke-width="1.5" stroke-linecap="round"/>
+    <path d="M34 60 Q40 64 46 60" stroke="#1a1a2e" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+
+    <!-- 项圈 -->
+    <path d="M18 66 Q40 74 62 66" stroke="#10b981" stroke-width="3" fill="none" stroke-linecap="round"/>
+
+    <!-- 项圈吊牌 -->
+    <circle cx="40" cy="72" r="4" fill="url(#g)"/>
+  </g>
+
+  <!-- 标题 -->
+  <text x="240" y="85" font-family="system-ui, -apple-system, sans-serif" font-size="56" font-weight="800" fill="url(#text-grad)">Mozi</text>
+  <text x="370" y="85" font-family="system-ui, -apple-system, sans-serif" font-size="56" font-weight="800" fill="#f0f4ff"> 墨子</text>
+
+  <!-- 副标题 -->
+  <text x="240" y="120" font-family="system-ui, -apple-system, sans-serif" font-size="18" fill="#8892b0">支持国产大模型和国产通讯软件的智能助手框架</text>
+
+  <!-- 标签 -->
+  <g transform="translate(240, 140)">
+    <!-- DeepSeek -->
+    <rect x="0" y="0" width="70" height="24" rx="4" fill="#10b981" opacity="0.15"/>
+    <text x="35" y="16" font-family="system-ui" font-size="11" fill="#10b981" text-anchor="middle">DeepSeek</text>
+
+    <!-- Qwen -->
+    <rect x="80" y="0" width="50" height="24" rx="4" fill="#3b82f6" opacity="0.15"/>
+    <text x="105" y="16" font-family="system-ui" font-size="11" fill="#3b82f6" text-anchor="middle">Qwen</text>
+
+    <!-- 飞书 -->
+    <rect x="140" y="0" width="45" height="24" rx="4" fill="#8b5cf6" opacity="0.15"/>
+    <text x="162" y="16" font-family="system-ui" font-size="11" fill="#8b5cf6" text-anchor="middle">飞书</text>
+
+    <!-- 钉钉 -->
+    <rect x="195" y="0" width="45" height="24" rx="4" fill="#f59e0b" opacity="0.15"/>
+    <text x="217" y="16" font-family="system-ui" font-size="11" fill="#f59e0b" text-anchor="middle">钉钉</text>
+
+    <!-- QQ -->
+    <rect x="250" y="0" width="35" height="24" rx="4" fill="#ef4444" opacity="0.15"/>
+    <text x="267" y="16" font-family="system-ui" font-size="11" fill="#ef4444" text-anchor="middle">QQ</text>
+  </g>
+
+  <!-- 右侧装饰 -->
+  <g transform="translate(680, 40)">
+    <circle cx="0" cy="0" r="40" fill="none" stroke="#10b981" stroke-width="1" opacity="0.1"/>
+    <circle cx="0" cy="0" r="60" fill="none" stroke="#3b82f6" stroke-width="1" opacity="0.08"/>
+    <circle cx="0" cy="0" r="80" fill="none" stroke="#8b5cf6" stroke-width="1" opacity="0.05"/>
+  </g>
+
+  <!-- 代码装饰 -->
+  <text x="650" y="160" font-family="monospace" font-size="12" fill="#10b981" opacity="0.4">&lt;/&gt;</text>
+  <text x="720" y="130" font-family="monospace" font-size="10" fill="#3b82f6" opacity="0.3">AI</text>
+  <text x="750" y="170" font-family="monospace" font-size="11" fill="#8b5cf6" opacity="0.3">fn()</text>
+</svg>

@@ -1,11 +1,17 @@
-# Mozi (墨子)
+<p align="center">
+  <img src="./docs/images/banner.svg" alt="Mozi Banner" />
+</p>
+
+<p align="center">
+  <a href="https://www.npmjs.com/package/mozi-bot"><img src="https://img.shields.io/npm/v/mozi-bot?color=10b981" alt="npm version" /></a>
+  <a href="https://github.com/King-Chau/mozi/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-Apache%202.0-blue" alt="license" /></a>
+  <a href="https://nodejs.org"><img src="https://img.shields.io/badge/node-%3E%3D18-green" alt="node version" /></a>
+</p>
 
 <p align="center">
   <img src="./docs/images/qq.jpg" width="45%" alt="QQ 机器人" />
   <img src="./docs/images/dingding.jpg" width="45%" alt="钉钉机器人" />
 </p>
-
-**支持国产大模型和国产通讯软件的智能助手框架**
 
 Mozi 是一个轻量级的 AI 助手框架，专注于国产生态。它提供统一的接口对接多种国产 AI 模型（DeepSeek、Qwen、Kimi 等），支持 OpenAI Function Calling，并支持 QQ、飞书、钉钉、企业微信等通讯平台。
 
