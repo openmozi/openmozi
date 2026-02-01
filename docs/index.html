@@ -899,7 +899,7 @@
           <div class="stat-label">Chat Platforms</div>
         </div>
         <div class="stat-item">
-          <div class="stat-value">20</div>
+          <div class="stat-value">25</div>
           <div class="stat-label">Built-in Tools</div>
         </div>
       </div>
@@ -928,7 +928,7 @@
         <div class="feature-card">
           <div class="feature-icon amber">&#x1f527;</div>
           <h3>Function Calling</h3>
-          <p>原生支持 OpenAI tools/tool_choice 参数，20 个内置工具涵盖文件操作、Bash 执行、网络搜索等。</p>
+          <p>原生支持 OpenAI tools/tool_choice 参数，25 个内置工具涵盖文件操作、Bash 执行、网络搜索、定时任务等。</p>
         </div>
         <div class="feature-card">
           <div class="feature-icon green">&#x1f9e0;</div>
@@ -936,9 +936,24 @@
           <p>跨会话长期记忆，自动记住用户偏好和重要信息。无需手动触发，Agent 智能判断存储时机。</p>
         </div>
         <div class="feature-card">
-          <div class="feature-icon blue">&#x1f3af;</div>
+          <div class="feature-icon blue">&#x23f0;</div>
+          <h3>定时任务 (Cron)</h3>
+          <p>支持一次性、周期性、Cron 表达式三种调度方式。可通过对话创建和管理定时任务。</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon amber">&#x1f9e9;</div>
+          <h3>插件系统</h3>
+          <p>可扩展的插件架构，支持自动发现和加载。通过 PluginApi 注册工具和 Hook。</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon green">&#x1f3af;</div>
           <h3>Skills 技能系统</h3>
           <p>通过 SKILL.md 文件扩展 Agent 能力。支持自定义行为、专业知识注入，无需修改代码。</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon blue">&#x1f310;</div>
+          <h3>浏览器自动化</h3>
+          <p>基于 Playwright 的浏览器控制，支持多配置文件管理、截图增强、元素交互。</p>
         </div>
         <div class="feature-card">
           <div class="feature-icon amber">&#x26a1;</div>
@@ -1092,8 +1107,8 @@
     <div class="container">
       <div class="section-header">
         <div class="section-tag">Built-in Tools</div>
-        <h2 class="section-title">20 个内置工具</h2>
-        <p class="section-desc">原生 Function Calling，涵盖文件操作、命令执行、网络、多媒体等</p>
+        <h2 class="section-title">25 个内置工具</h2>
+        <p class="section-desc">原生 Function Calling，涵盖文件操作、命令执行、网络、定时任务等</p>
       </div>
       <div class="tools-grid">
         <div class="tool-item">
@@ -1141,8 +1156,16 @@
           <div class="tool-info"><h4>memory_*</h4><p>长期记忆系统</p></div>
         </div>
         <div class="tool-item">
+          <span class="tool-icon">&#9200;</span>
+          <div class="tool-info"><h4>cron_*</h4><p>定时任务管理</p></div>
+        </div>
+        <div class="tool-item">
           <span class="tool-icon">&#129302;</span>
           <div class="tool-info"><h4>subagent</h4><p>子 Agent 任务分解</p></div>
+        </div>
+        <div class="tool-item">
+          <span class="tool-icon">&#128268;</span>
+          <div class="tool-info"><h4>plugin_*</h4><p>插件扩展工具</p></div>
         </div>
       </div>
     </div>
@@ -1233,6 +1256,8 @@
               <span class="arch-node core">会话管理</span>
               <span class="arch-node core">Skills 技能</span>
               <span class="arch-node core">记忆系统</span>
+              <span class="arch-node core">定时任务</span>
+              <span class="arch-node core">插件系统</span>
             </div>
           </div>
           <div class="arch-arrow">&darr;</div>
@@ -1250,13 +1275,14 @@
           </div>
           <div class="arch-arrow">&darr;</div>
           <div class="arch-layer">
-            <div class="arch-layer-title">Tools &mdash; 20 个内置工具</div>
+            <div class="arch-layer-title">Tools &mdash; 25 个内置工具</div>
             <div class="arch-nodes">
               <span class="arch-node tool">文件操作</span>
               <span class="arch-node tool">Bash 执行</span>
               <span class="arch-node tool">网络请求</span>
               <span class="arch-node tool">浏览器自动化</span>
               <span class="arch-node tool">记忆系统</span>
+              <span class="arch-node tool">定时任务</span>
               <span class="arch-node tool">子 Agent</span>
             </div>
           </div>

@@ -13,6 +13,7 @@ export * from "./process-tool.js";
 export * from "./apply-patch.js";
 export * from "./subagent.js";
 export * from "./memory.js";
+export * from "./cron.js";
 
 import type { Tool } from "../types.js";
 import { createWebSearchTool, createWebFetchTool } from "./web.js";
@@ -24,7 +25,9 @@ import { createBashTool, type BashToolOptions } from "./bash.js";
 import { createProcessTool } from "./process-tool.js";
 import { createApplyPatchTool } from "./apply-patch.js";
 import { createMemoryTools, type MemoryToolsOptions } from "./memory.js";
+import { createCronTools, type CronToolsOptions } from "./cron.js";
 import type { MemoryManager } from "../../memory/index.js";
+import type { CronService } from "../../cron/service.js";
 
 /** 内置工具选项 */
 export interface BuiltinToolsOptions {
@@ -37,8 +40,11 @@ export interface BuiltinToolsOptions {
   enableBash?: boolean;
   enableProcess?: boolean;
   enableMemory?: boolean;
+  enableCron?: boolean;
   /** MemoryManager 实例 */
   memoryManager?: MemoryManager;
+  /** CronService 实例 */
+  cronService?: CronService;
 }
 
 /** 创建所有内置工具 */
@@ -81,6 +87,11 @@ export function createBuiltinTools(options?: BuiltinToolsOptions): Tool[] {
   // 记忆工具 (需要 MemoryManager 实例)
   if (options?.enableMemory !== false && options?.memoryManager) {
     tools.push(...createMemoryTools({ manager: options.memoryManager }));
+  }
+
+  // 定时任务工具 (需要 CronService 实例)
+  if (options?.enableCron && options?.cronService) {
+    tools.push(...createCronTools({ service: options.cronService }));
   }
 
   return tools;

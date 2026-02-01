@@ -37,6 +37,7 @@ import { createSessionStore, type SessionStore, type SessionData } from "./sessi
 import { initSkills, type SkillsRegistry } from "../skills/index.js";
 import type { SkillsConfig } from "../skills/types.js";
 import { createMemoryManager, type MemoryManager } from "../memory/index.js";
+import { CronService, getCronService } from "../cron/service.js";
 
 const logger = getChildLogger("agent");
 
@@ -80,6 +81,8 @@ export interface AgentOptions {
   sessionStore?: SessionStore;
   /** MemoryManager 实例 */
   memoryManager?: MemoryManager;
+  /** CronService 实例 */
+  cronService?: CronService;
 }
 
 /** Agent 响应 */
@@ -100,9 +103,10 @@ export interface AgentResponse {
 
 /** Agent 类 */
 export class Agent {
-  private options: Required<Omit<AgentOptions, "sessionStore" | "memoryManager">> & {
+  private options: Required<Omit<AgentOptions, "sessionStore" | "memoryManager" | "cronService">> & {
     sessionStore: SessionStore;
     memoryManager?: MemoryManager;
+    cronService?: CronService;
   };
   private tools: Tool[] = [];
   private openaiTools: OpenAIToolDefinition[] = [];
@@ -128,6 +132,7 @@ export class Agent {
       enableFunctionCalling: options.enableFunctionCalling ?? true,
       sessionStore: options.sessionStore ?? createSessionStore(),
       memoryManager: options.memoryManager,
+      cronService: options.cronService,
     };
 
     // 初始化工具
@@ -144,6 +149,8 @@ export class Agent {
       enableBrowser: true,
       enableMemory: !!this.options.memoryManager,
       memoryManager: this.options.memoryManager,
+      enableCron: !!this.options.cronService,
+      cronService: this.options.cronService,
     });
     registerTools(builtinTools);
     this.tools = filterToolsByPolicy(getAllTools(), this.options.toolPolicy);
@@ -909,6 +916,21 @@ export async function createAgent(config: MoziConfig): Promise<Agent> {
     logger.info({ directory: config.memory.directory }, "Memory system initialized");
   }
 
+  // 初始化 CronService
+  const cronService = getCronService({
+    enabled: true,
+    executeJob: async (job) => {
+      // 简单的系统消息执行
+      logger.info({ jobId: job.id, jobName: job.name, payload: job.payload }, "Cron job executed");
+      return { status: "ok" as const };
+    },
+    onEvent: (event) => {
+      logger.debug({ event }, "Cron event");
+    },
+  });
+  cronService.start();
+  logger.info("Cron service initialized");
+
   const agent = new Agent({
     model: config.agent.defaultModel,
     provider: config.agent.defaultProvider,
@@ -919,6 +941,7 @@ export async function createAgent(config: MoziConfig): Promise<Agent> {
     enableFunctionCalling: config.agent.enableFunctionCalling ?? true,
     sessionStore: createSessionStore(config.sessions),
     memoryManager,
+    cronService,
   });
 
   // 加载 Skills

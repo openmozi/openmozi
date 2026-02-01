@@ -24,9 +24,12 @@ Mozi 是一个轻量级的 AI 助手框架，专注于国产生态。它提供�
 - **多模型支持** — DeepSeek、豆包、DashScope (Qwen)、智谱AI、Kimi、阶跃星辰、MiniMax，以及 OpenAI/Anthropic 兼容格式
 - **多平台通道** — QQ、飞书、钉钉、企业微信，统一的消息处理接口
 - **Function Calling** — 原生支持 OpenAI tools/tool_choice 参数
-- **20 内置工具** — 文件读写、Bash 执行、代码搜索、网页获取、图像分析、浏览器自动化、记忆系统等
+- **25 内置工具** — 文件读写、Bash 执行、代码搜索、网页获取、图像分析、浏览器自动化、记忆系统、定时任务等
 - **Skills 技能系统** — 通过 SKILL.md 文件扩展 Agent 能力，支持自定义行为和专业知识注入
 - **记忆系统** — 跨会话长期记忆，自动记住用户偏好和重要信息
+- **定时任务 (Cron)** — 支持一次性、周期性、Cron 表达式三种调度方式
+- **插件系统** — 可扩展的插件架构，支持自动发现和加载
+- **浏览器自动化** — 基于 Playwright 的浏览器控制，支持多配置文件和截图
 - **会话管理** — 上下文压缩、会话持久化、多轮对话
 - **可扩展** — 插件系统、Hook 事件、自定义工具、子 Agent
 
@@ -405,6 +408,86 @@ Agent 会在对话中自动判断何时需要存储或查询记忆，无需用�
 
 记忆以 JSON 文件存储，每条记忆包含内容、标签和时间戳，支持按关键词检索。
 
+## 定时任务 (Cron)
+
+定时任务系统让 Agent 能够按计划执行任务，支持三种调度方式：
+
+### 调度类型
+
+| 类型 | 说明 | 示例 |
+|------|------|------|
+| `at` | 一次性任务 | 在 2024-01-01 10:00 执行 |
+| `every` | 周期性任务 | 每 30 分钟执行一次 |
+| `cron` | Cron 表达式 | `0 9 * * *` 每天 9 点执行 |
+
+### 使用方式
+
+Agent 可以通过内置工具管理定时任务：
+
+- `cron_list` — 列出所有任务
+- `cron_add` — 添加新任务
+- `cron_remove` — 删除任务
+- `cron_run` — 立即执行任务
+- `cron_update` — 更新任务状态
+
+示例对话：
+- "创建一个每天早上 9 点提醒我喝水的任务"
+- "列出所有定时任务"
+- "删除名为'喝水提醒'的任务"
+
+### 存储
+
+任务数据存储在 `~/.mozi/cron/jobs.json`，支持持久化。
+
+## 插件系统
+
+插件系统允许扩展 Mozi 的功能，支持自动发现和加载。
+
+### 插件目录
+
+| 优先级 | 来源 | 目录 | 说明 |
+|--------|------|------|------|
+| 1 | 内置 | `plugins/` | 项目自带插件 |
+| 2 | 全局 | `~/.mozi/plugins/` | 用户安装的全局插件 |
+| 3 | 工作区 | `./.mozi/plugins/` | 项目级插件 |
+
+### 编写插件
+
+```typescript
+import { definePlugin } from "mozi-bot";
+
+export default definePlugin(
+  {
+    id: "my-plugin",
+    name: "My Plugin",
+    version: "1.0.0",
+  },
+  (api) => {
+    // 注册工具
+    api.registerTool({
+      name: "my_tool",
+      description: "My custom tool",
+      parameters: { type: "object", properties: {} },
+      execute: async () => ({ content: [{ type: "text", text: "Hello!" }] }),
+    });
+
+    // 注册 Hook
+    api.registerHook("message_received", (ctx) => {
+      console.log("Message received:", ctx.content);
+    });
+  }
+);
+```
+
+### PluginApi
+
+| 方法 | 说明 |
+|------|------|
+| `registerTool(tool)` | 注册自定义工具 |
+| `registerTools(tools)` | 批量注册工具 |
+| `registerHook(event, handler)` | 注册事件钩子 |
+| `getConfig()` | 获取插件配置 |
+
 ## 内置工具
 
 | 类别 | 工具 | 说明 |
@@ -428,6 +511,11 @@ Agent 会在对话中自动判断何时需要存储或查询记忆，无需用�
 | 记忆 | `memory_store` | 存储长期记忆 |
 | | `memory_query` | 查询相关记忆 |
 | | `memory_list` | 列出所有记忆 |
+| 定时任务 | `cron_list` | 列出所有定时任务 |
+| | `cron_add` | 添加定时任务 |
+| | `cron_remove` | 删除定时任务 |
+| | `cron_run` | 立即执行任务 |
+| | `cron_update` | 更新任务状态 |
 | Agent | `subagent` | 创建子 Agent 执行复杂任务 |
 
 ## CLI 命令
@@ -467,9 +555,13 @@ src/
 ├── agents/        # Agent 核心（消息循环、上下文压缩、会话管理）
 ├── channels/      # 通道适配器（QQ、飞书、钉钉、企业微信）
 ├── providers/     # 模型提供商（统一接口）
-├── tools/         # 内置工具（文件、Bash、网络等）
+├── tools/         # 内置工具（文件、Bash、网络、定时任务等）
 ├── skills/        # 技能系统（SKILL.md 加载、注册）
 ├── sessions/      # 会话存储（内存、文件）
+├── memory/        # 记忆系统
+├── cron/          # 定时任务系统（调度、存储、服务）
+├── plugins/       # 插件系统（发现、加载、注册）
+├── browser/       # 浏览器自动化（配置、会话、截图）
 ├── web/           # WebChat 前端
 ├── config/        # 配置加载
 ├── gateway/       # HTTP/WebSocket 网关
@@ -545,6 +637,7 @@ flowchart TB
             T4["🖼️ 多媒体\n图像分析 / 浏览器"]
             T5["🧠 记忆系统\n长期记忆存储 / 查询"]
             T6["🤖 子 Agent\n复杂任务分解"]
+            T7["⏰ 定时任务\nCron 调度 / 周期执行"]
         end
     end
 
