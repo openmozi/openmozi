@@ -116,7 +116,7 @@ program
 
       // 检查提供商
       console.log("📦 模型提供商:");
-      const providers = ["deepseek", "zhipu", "dashscope", "kimi", "stepfun", "minimax", "modelscope"] as const;
+      const providers = ["deepseek", "doubao", "zhipu", "dashscope", "kimi", "stepfun", "minimax", "modelscope"] as const;
       for (const id of providers) {
         const providerConfig = config.providers[id];
         const status = providerConfig?.apiKey ? "✅ 已配置" : "⬜ 未配置";
@@ -289,7 +289,7 @@ program
 
     // 步骤 1: 选择配置模式
     console.log("\n📦 步骤 1/5: 选择提供商类型\n");
-    console.log("  1. 国产模型 (DeepSeek, 智谱AI, DashScope, Kimi, 阶跃星辰, MiniMax, ModelScope)");
+    console.log("  1. 国产模型 (DeepSeek, 豆包, 智谱AI, DashScope, Kimi, 阶跃星辰, MiniMax, ModelScope)");
     console.log("  2. 自定义 OpenAI 兼容接口 (支持任意 OpenAI API 格式的服务)");
     console.log("  3. 自定义 Anthropic 兼容接口 (支持任意 Claude API 格式的服务)");
     console.log("");
@@ -308,6 +308,15 @@ program
         if (!defaultProvider) {
           defaultProvider = "deepseek";
           defaultModel = "deepseek-chat";
+        }
+      }
+
+      const doubaoKey = await question("豆包 API Key (火山引擎 ARK，深度思考模型): ");
+      if (doubaoKey.trim()) {
+        config.providers["doubao"] = { apiKey: doubaoKey.trim() };
+        if (!defaultProvider) {
+          defaultProvider = "doubao";
+          defaultModel = "doubao-seed-1-8-251228";
         }
       }
 
