@@ -5,6 +5,7 @@
 import type { ProviderId, MoziConfig, SimpleProviderConfig } from "../types/index.js";
 import { BaseProvider } from "./base.js";
 import { createDeepSeekProvider, DeepSeekProvider } from "./deepseek.js";
+import { createDoubaoProvider, DoubaoProvider } from "./doubao.js";
 import { createKimiProvider, KimiProvider } from "./kimi.js";
 import { createStepfunProvider, StepfunProvider } from "./stepfun.js";
 import { createMiniMaxProvider, MiniMaxProvider } from "./minimax.js";
@@ -29,6 +30,7 @@ import { getChildLogger } from "../utils/logger.js";
 
 export * from "./base.js";
 export * from "./deepseek.js";
+export * from "./doubao.js";
 export * from "./kimi.js";
 export * from "./stepfun.js";
 export * from "./minimax.js";
@@ -73,6 +75,15 @@ export function initializeProviders(config: MoziConfig): void {
     const provider = createDeepSeekProvider(
       providersConfig.deepseek.apiKey,
       providersConfig.deepseek.baseUrl
+    );
+    registerProvider(provider);
+  }
+
+  // 豆包（火山引擎 ARK）
+  if (providersConfig.doubao?.apiKey) {
+    const provider = createDoubaoProvider(
+      providersConfig.doubao.apiKey,
+      providersConfig.doubao.baseUrl
     );
     registerProvider(provider);
   }

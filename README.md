@@ -108,6 +108,7 @@ npm start -- start --web-only
 | 提供商 | 环境变量 | 说明 |
 |--------|----------|------|
 | DeepSeek | `DEEPSEEK_API_KEY` | 推理能力强、性价比高 |
+| 豆包 | `DOUBAO_API_KEY` | 字节跳动火山引擎，豆包 1.5 Pro/Lite 系列，支持推理接入点 |
 | DashScope | `DASHSCOPE_API_KEY` | 阿里云灵积，通义千问商业版，稳定高并发 |
 | 智谱 AI | `ZHIPU_API_KEY` | GLM-Z1/GLM-4 系列，清华技术团队，有免费额度 |
 | ModelScope | `MODELSCOPE_API_KEY` | 阿里云魔搭社区，Qwen 开源版，有免费额度 |
