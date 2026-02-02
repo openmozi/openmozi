@@ -4,6 +4,10 @@
   <img src="./docs/images/mascot.svg" width="80" alt="Mozi Mascot" />
 </p>
 
+<p align="center">
+  中文 | <a href="./README_EN.md">English</a>
+</p>
+
 <table align="center">
   <tr>
     <td align="center"><sub>QQ 机器人</sub></td>
