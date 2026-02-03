@@ -10,10 +10,12 @@
 
 <table align="center">
   <tr>
+    <td align="center"><sub>飞书 机器人</sub></td>
     <td align="center"><sub>QQ 机器人</sub></td>
     <td align="center"><sub>钉钉机器人</sub></td>
   </tr>
   <tr>
+    <td><img src="./docs/images/feishu.jpg" width="400" alt="飞书 机器人" /></td>
     <td><img src="./docs/images/qq.jpg" width="400" alt="QQ 机器人" /></td>
     <td><img src="./docs/images/dingding.jpg" width="400" alt="钉钉机器人" /></td>
   </tr>

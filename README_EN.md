@@ -10,10 +10,12 @@
 
 <table align="center">
   <tr>
+    <td align="center"><sub>Feishu Bot</sub></td>
     <td align="center"><sub>QQ Bot</sub></td>
     <td align="center"><sub>DingTalk Bot</sub></td>
   </tr>
   <tr>
+    <td><img src="./docs/images/feishu.jpg" width="400" alt="Feishu Bot" /></td>
     <td><img src="./docs/images/qq.jpg" width="400" alt="QQ Bot" /></td>
     <td><img src="./docs/images/dingding.jpg" width="400" alt="DingTalk Bot" /></td>
   </tr>
