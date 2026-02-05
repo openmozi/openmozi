@@ -25,6 +25,121 @@
 
 Mozi 是一个轻量级的 AI 助手框架，专注于国产生态。它提供统一的接口对接多种国产 AI 模型（DeepSeek、豆包、Qwen、Kimi 等），支持 OpenAI Function Calling，并支持 QQ、飞书、钉钉、企业微信等通讯平台。
 
+## 架构图
+
+```mermaid
+flowchart TB
+    subgraph Input["📥 输入层"]
+        Feishu["🔵 飞书\nWebSocket 长连接"]
+        Dingtalk["🟢 钉钉\nStream 长连接"]
+        QQ["🟣 QQ\nWebSocket 长连接"]
+        WeCom["🔴 企业微信\nHTTP 回调"]
+        WebChat["🟡 WebChat\nHTTP + WebSocket"]
+    end
+
+    subgraph Server["🚀 服务层"]
+        Gateway["Gateway 网关\nHTTP/WebSocket 路由"]
+    end
+
+    subgraph Core["⚙️ 核心层"]
+        Agent["Agent 引擎"]
+
+        subgraph AgentInner[" "]
+            MsgLoop["📨 消息循环\nUser → LLM → Tool → Result"]
+            CtxMgr["📚 上下文管理\n历史压缩 / Token 控制"]
+            Session["💾 会话存储\nMemory / File"]
+            Skills["🎯 Skills 技能\nSKILL.md 知识注入"]
+        end
+    end
+
+    subgraph External["🔗 外部依赖"]
+        subgraph Providers["模型提供商"]
+            P1["DeepSeek"]
+            P2["豆包"]
+            P3["DashScope"]
+            P4["智谱AI"]
+            P5["Kimi"]
+            P6["OpenAI"]
+            P7["Anthropic"]
+        end
+
+        subgraph Tools["工具系统"]
+            T1["📁 文件操作\nread/write/edit/glob/grep"]
+            T2["⌨️ Bash 执行\n命令行 / 进程管理"]
+            T3["🌐 网络请求\nsearch/fetch"]
+            T4["🖼️ 多媒体\n图像分析 / 浏览器"]
+            T5["🧠 记忆系统\n长期记忆存储 / 查询"]
+            T6["🤖 子 Agent\n复杂任务分解"]
+            T7["⏰ 定时任务\nCron 调度 / 周期执行"]
+        end
+    end
+
+    Feishu --> Gateway
+    Dingtalk --> Gateway
+    QQ --> Gateway
+    WeCom --> Gateway
+    WebChat --> Gateway
+    Gateway --> Agent
+    Agent --> MsgLoop
+    MsgLoop <--> CtxMgr
+    MsgLoop <--> Session
+    MsgLoop <--> Skills
+    MsgLoop <-->|"调用模型"| Providers
+    MsgLoop <-->|"执行工具"| Tools
+```
+
+### 消息处理流程
+
+```mermaid
+flowchart TD
+    Start([用户发送消息]) --> Channel[Channel 接收]
+    Channel --> Gateway[Gateway 路由]
+    Gateway --> LoadCtx[加载会话上下文]
+
+    LoadCtx --> LoadSkills[加载 Skills 技能]
+    LoadSkills --> BuildCtx[构建 LLM 请求]
+    BuildCtx --> |系统提示词 + Skills<br/>历史消息<br/>工具列表| CallLLM[调用 LLM]
+
+    CallLLM --> Check{返回类型?}
+
+    Check --> |纯文本| Response[返回响应]
+    Check --> |工具调用| ExecTool[执行工具]
+
+    ExecTool --> ToolResult[工具返回结果]
+    ToolResult --> |加入上下文| CallLLM
+
+    Response --> SaveCtx[保存会话]
+    SaveCtx --> Send[Channel 发送]
+    Send --> End([用户收到回复])
+
+    style Start fill:#e1f5fe
+    style End fill:#e8f5e9
+    style CallLLM fill:#fff3e0
+    style ExecTool fill:#fce4ec
+    style LoadSkills fill:#f3e5f5
+```
+
+### 核心模块
+
+| 模块 | 目录 | 职责 |
+|------|------|------|
+| **Agent** | `src/agents/` | 核心消息循环、上下文压缩、会话管理、模型失败重试 |
+| **Providers** | `src/providers/` | 统一的模型调用接口，支持 OpenAI/Anthropic 兼容格式 |
+| **Tools** | `src/tools/` | 工具注册、参数校验、执行引擎，支持自定义扩展 |
+| **Skills** | `src/skills/` | 技能系统，通过 SKILL.md 注入专业知识和自定义行为 |
+| **Channels** | `src/channels/` | 通道适配器，统一消息格式，支持长连接 |
+| **Sessions** | `src/sessions/` | 会话持久化，支持内存/文件存储，Transcript 记录 |
+| **Gateway** | `src/gateway/` | HTTP/WebSocket 服务，路由分发 |
+
+### 上下文压缩策略
+
+当对话历史超过 Token 限制时，Mozi 使用智能压缩：
+
+1. **保留策略** — 始终保留系统提示词和最近 N 轮对话
+2. **摘要压缩** — 将早期对话压缩为摘要，保留关键信息
+3. **工具结果裁剪** — 截断过长的工具返回结果
+4. **配对验证** — 确保 tool_call 和 tool_result 成对出现
+
 ## 核心特性
 
 - **多模型支持** — DeepSeek、豆包、DashScope (Qwen)、智谱AI、Kimi、阶跃星辰、MiniMax，以及 OpenAI/Anthropic 兼容格式
@@ -661,121 +776,6 @@ console.log(response.content);
 - **失败重试** — 模型调用失败自动切换备选模型
 
 代码结构清晰，注释完善，适合阅读源码学习 Agent 架构设计。
-
-### 架构图
-
-```mermaid
-flowchart TB
-    subgraph Input["📥 输入层"]
-        Feishu["🔵 飞书\nWebSocket 长连接"]
-        Dingtalk["🟢 钉钉\nStream 长连接"]
-        QQ["🟣 QQ\nWebSocket 长连接"]
-        WeCom["🔴 企业微信\nHTTP 回调"]
-        WebChat["🟡 WebChat\nHTTP + WebSocket"]
-    end
-
-    subgraph Server["🚀 服务层"]
-        Gateway["Gateway 网关\nHTTP/WebSocket 路由"]
-    end
-
-    subgraph Core["⚙️ 核心层"]
-        Agent["Agent 引擎"]
-
-        subgraph AgentInner[" "]
-            MsgLoop["📨 消息循环\nUser → LLM → Tool → Result"]
-            CtxMgr["📚 上下文管理\n历史压缩 / Token 控制"]
-            Session["💾 会话存储\nMemory / File"]
-            Skills["🎯 Skills 技能\nSKILL.md 知识注入"]
-        end
-    end
-
-    subgraph External["🔗 外部依赖"]
-        subgraph Providers["模型提供商"]
-            P1["DeepSeek"]
-            P2["豆包"]
-            P3["DashScope"]
-            P4["智谱AI"]
-            P5["Kimi"]
-            P6["OpenAI"]
-            P7["Anthropic"]
-        end
-
-        subgraph Tools["工具系统"]
-            T1["📁 文件操作\nread/write/edit/glob/grep"]
-            T2["⌨️ Bash 执行\n命令行 / 进程管理"]
-            T3["🌐 网络请求\nsearch/fetch"]
-            T4["🖼️ 多媒体\n图像分析 / 浏览器"]
-            T5["🧠 记忆系统\n长期记忆存储 / 查询"]
-            T6["🤖 子 Agent\n复杂任务分解"]
-            T7["⏰ 定时任务\nCron 调度 / 周期执行"]
-        end
-    end
-
-    Feishu --> Gateway
-    Dingtalk --> Gateway
-    QQ --> Gateway
-    WeCom --> Gateway
-    WebChat --> Gateway
-    Gateway --> Agent
-    Agent --> MsgLoop
-    MsgLoop <--> CtxMgr
-    MsgLoop <--> Session
-    MsgLoop <--> Skills
-    MsgLoop <-->|"调用模型"| Providers
-    MsgLoop <-->|"执行工具"| Tools
-```
-
-### 消息处理流程
-
-```mermaid
-flowchart TD
-    Start([用户发送消息]) --> Channel[Channel 接收]
-    Channel --> Gateway[Gateway 路由]
-    Gateway --> LoadCtx[加载会话上下文]
-
-    LoadCtx --> LoadSkills[加载 Skills 技能]
-    LoadSkills --> BuildCtx[构建 LLM 请求]
-    BuildCtx --> |系统提示词 + Skills<br/>历史消息<br/>工具列表| CallLLM[调用 LLM]
-
-    CallLLM --> Check{返回类型?}
-
-    Check --> |纯文本| Response[返回响应]
-    Check --> |工具调用| ExecTool[执行工具]
-
-    ExecTool --> ToolResult[工具返回结果]
-    ToolResult --> |加入上下文| CallLLM
-
-    Response --> SaveCtx[保存会话]
-    SaveCtx --> Send[Channel 发送]
-    Send --> End([用户收到回复])
-
-    style Start fill:#e1f5fe
-    style End fill:#e8f5e9
-    style CallLLM fill:#fff3e0
-    style ExecTool fill:#fce4ec
-    style LoadSkills fill:#f3e5f5
-```
-
-### 核心模块
-
-| 模块 | 目录 | 职责 |
-|------|------|------|
-| **Agent** | `src/agents/` | 核心消息循环、上下文压缩、会话管理、模型失败重试 |
-| **Providers** | `src/providers/` | 统一的模型调用接口，支持 OpenAI/Anthropic 兼容格式 |
-| **Tools** | `src/tools/` | 工具注册、参数校验、执行引擎，支持自定义扩展 |
-| **Skills** | `src/skills/` | 技能系统，通过 SKILL.md 注入专业知识和自定义行为 |
-| **Channels** | `src/channels/` | 通道适配器，统一消息格式，支持长连接 |
-| **Sessions** | `src/sessions/` | 会话持久化，支持内存/文件存储，Transcript 记录 |
-| **Gateway** | `src/gateway/` | HTTP/WebSocket 服务，路由分发 |
-
-### 上下文压缩策略
-
-当对话历史超过 Token 限制时，Mozi 使用智能压缩：
-
-1. **保留策略** — 始终保留系统提示词和最近 N 轮对话
-2. **摘要压缩** — 将早期对话压缩为摘要，保留关键信息
-3. **工具结果裁剪** — 截断过长的工具返回结果
-4. **配对验证** — 确保 tool_call 和 tool_result 成对出现
 
 ## 开发
 

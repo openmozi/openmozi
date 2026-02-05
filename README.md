@@ -25,6 +25,121 @@
 
 Mozi is a lightweight AI assistant framework focused on the Chinese ecosystem. It provides a unified interface for various Chinese AI models (DeepSeek, Doubao, Qwen, Kimi, etc.), supports OpenAI Function Calling, and integrates with QQ, Feishu, DingTalk, and WeCom platforms.
 
+## Architecture Design
+
+```mermaid
+flowchart TB
+    subgraph Input["📥 Input Layer"]
+        Feishu["🔵 Feishu\nWebSocket Long Connection"]
+        Dingtalk["🟢 DingTalk\nStream Long Connection"]
+        QQ["🟣 QQ\nWebSocket Long Connection"]
+        WeCom["🔴 WeCom\nHTTP Callback"]
+        WebChat["🟡 WebChat\nHTTP + WebSocket"]
+    end
+
+    subgraph Server["🚀 Service Layer"]
+        Gateway["Gateway\nHTTP/WebSocket Routing"]
+    end
+
+    subgraph Core["⚙️ Core Layer"]
+        Agent["Agent Engine"]
+
+        subgraph AgentInner[" "]
+            MsgLoop["📨 Message Loop\nUser → LLM → Tool → Result"]
+            CtxMgr["📚 Context Management\nHistory Compression / Token Control"]
+            Session["💾 Session Storage\nMemory / File"]
+            Skills["🎯 Skills\nSKILL.md Knowledge Injection"]
+        end
+    end
+
+    subgraph External["🔗 External Dependencies"]
+        subgraph Providers["Model Providers"]
+            P1["DeepSeek"]
+            P2["Doubao"]
+            P3["DashScope"]
+            P4["Zhipu AI"]
+            P5["Kimi"]
+            P6["OpenAI"]
+            P7["Anthropic"]
+        end
+
+        subgraph Tools["Tool System"]
+            T1["📁 File Operations\nread/write/edit/glob/grep"]
+            T2["⌨️ Bash Execution\nCLI / Process Management"]
+            T3["🌐 Network Requests\nsearch/fetch"]
+            T4["🖼️ Multimedia\nImage Analysis / Browser"]
+            T5["🧠 Memory System\nLong-term Storage / Query"]
+            T6["🤖 Sub-Agent\nComplex Task Decomposition"]
+            T7["⏰ Scheduled Tasks\nCron Scheduling / Periodic Execution"]
+        end
+    end
+
+    Feishu --> Gateway
+    Dingtalk --> Gateway
+    QQ --> Gateway
+    WeCom --> Gateway
+    WebChat --> Gateway
+    Gateway --> Agent
+    Agent --> MsgLoop
+    MsgLoop <--> CtxMgr
+    MsgLoop <--> Session
+    MsgLoop <--> Skills
+    MsgLoop <-->|"Call Model"| Providers
+    MsgLoop <-->|"Execute Tool"| Tools
+```
+
+### Message Processing Flow
+
+```mermaid
+flowchart TD
+    Start([User Sends Message]) --> Channel[Channel Receives]
+    Channel --> Gateway[Gateway Routes]
+    Gateway --> LoadCtx[Load Session Context]
+
+    LoadCtx --> LoadSkills[Load Skills]
+    LoadSkills --> BuildCtx[Build LLM Request]
+    BuildCtx --> |System Prompt + Skills<br/>History Messages<br/>Tool List| CallLLM[Call LLM]
+
+    CallLLM --> Check{Response Type?}
+
+    Check --> |Text| Response[Return Response]
+    Check --> |Tool Call| ExecTool[Execute Tool]
+
+    ExecTool --> ToolResult[Tool Returns Result]
+    ToolResult --> |Add to Context| CallLLM
+
+    Response --> SaveCtx[Save Session]
+    SaveCtx --> Send[Channel Sends]
+    Send --> End([User Receives Reply])
+
+    style Start fill:#e1f5fe
+    style End fill:#e8f5e9
+    style CallLLM fill:#fff3e0
+    style ExecTool fill:#fce4ec
+    style LoadSkills fill:#f3e5f5
+```
+
+### Core Modules
+
+| Module | Directory | Responsibility |
+|--------|-----------|----------------|
+| **Agent** | `src/agents/` | Core message loop, context compression, session management, model failure retry |
+| **Providers** | `src/providers/` | Unified model calling interface, supports OpenAI/Anthropic compatible formats |
+| **Tools** | `src/tools/` | Tool registration, parameter validation, execution engine, supports custom extensions |
+| **Skills** | `src/skills/` | Skills system, inject professional knowledge and custom behaviors via SKILL.md |
+| **Channels** | `src/channels/` | Channel adapters, unified message format, supports long connections |
+| **Sessions** | `src/sessions/` | Session persistence, supports memory/file storage, Transcript recording |
+| **Gateway** | `src/gateway/` | HTTP/WebSocket service, routing |
+
+### Context Compression Strategy
+
+When conversation history exceeds token limit, Mozi uses intelligent compression:
+
+1. **Retention Strategy** — Always retain system prompt and last N rounds of conversation
+2. **Summary Compression** — Compress early conversations into summaries, preserving key information
+3. **Tool Result Trimming** — Truncate overly long tool return results
+4. **Pair Validation** — Ensure tool_call and tool_result appear in pairs
+
 ## Core Features
 
 - **Multi-Model Support** — DeepSeek, Doubao, DashScope (Qwen), Zhipu AI, Kimi, StepFun, MiniMax, plus OpenAI/Anthropic compatible formats
@@ -645,121 +760,6 @@ const response = await provider.chat({
 
 console.log(response.content);
 ```
-
-## Architecture Design
-
-```mermaid
-flowchart TB
-    subgraph Input["📥 Input Layer"]
-        Feishu["🔵 Feishu\nWebSocket Long Connection"]
-        Dingtalk["🟢 DingTalk\nStream Long Connection"]
-        QQ["🟣 QQ\nWebSocket Long Connection"]
-        WeCom["🔴 WeCom\nHTTP Callback"]
-        WebChat["🟡 WebChat\nHTTP + WebSocket"]
-    end
-
-    subgraph Server["🚀 Service Layer"]
-        Gateway["Gateway\nHTTP/WebSocket Routing"]
-    end
-
-    subgraph Core["⚙️ Core Layer"]
-        Agent["Agent Engine"]
-
-        subgraph AgentInner[" "]
-            MsgLoop["📨 Message Loop\nUser → LLM → Tool → Result"]
-            CtxMgr["📚 Context Management\nHistory Compression / Token Control"]
-            Session["💾 Session Storage\nMemory / File"]
-            Skills["🎯 Skills\nSKILL.md Knowledge Injection"]
-        end
-    end
-
-    subgraph External["🔗 External Dependencies"]
-        subgraph Providers["Model Providers"]
-            P1["DeepSeek"]
-            P2["Doubao"]
-            P3["DashScope"]
-            P4["Zhipu AI"]
-            P5["Kimi"]
-            P6["OpenAI"]
-            P7["Anthropic"]
-        end
-
-        subgraph Tools["Tool System"]
-            T1["📁 File Operations\nread/write/edit/glob/grep"]
-            T2["⌨️ Bash Execution\nCLI / Process Management"]
-            T3["🌐 Network Requests\nsearch/fetch"]
-            T4["🖼️ Multimedia\nImage Analysis / Browser"]
-            T5["🧠 Memory System\nLong-term Storage / Query"]
-            T6["🤖 Sub-Agent\nComplex Task Decomposition"]
-            T7["⏰ Scheduled Tasks\nCron Scheduling / Periodic Execution"]
-        end
-    end
-
-    Feishu --> Gateway
-    Dingtalk --> Gateway
-    QQ --> Gateway
-    WeCom --> Gateway
-    WebChat --> Gateway
-    Gateway --> Agent
-    Agent --> MsgLoop
-    MsgLoop <--> CtxMgr
-    MsgLoop <--> Session
-    MsgLoop <--> Skills
-    MsgLoop <-->|"Call Model"| Providers
-    MsgLoop <-->|"Execute Tool"| Tools
-```
-
-### Message Processing Flow
-
-```mermaid
-flowchart TD
-    Start([User Sends Message]) --> Channel[Channel Receives]
-    Channel --> Gateway[Gateway Routes]
-    Gateway --> LoadCtx[Load Session Context]
-
-    LoadCtx --> LoadSkills[Load Skills]
-    LoadSkills --> BuildCtx[Build LLM Request]
-    BuildCtx --> |System Prompt + Skills<br/>History Messages<br/>Tool List| CallLLM[Call LLM]
-
-    CallLLM --> Check{Response Type?}
-
-    Check --> |Text| Response[Return Response]
-    Check --> |Tool Call| ExecTool[Execute Tool]
-
-    ExecTool --> ToolResult[Tool Returns Result]
-    ToolResult --> |Add to Context| CallLLM
-
-    Response --> SaveCtx[Save Session]
-    SaveCtx --> Send[Channel Sends]
-    Send --> End([User Receives Reply])
-
-    style Start fill:#e1f5fe
-    style End fill:#e8f5e9
-    style CallLLM fill:#fff3e0
-    style ExecTool fill:#fce4ec
-    style LoadSkills fill:#f3e5f5
-```
-
-### Core Modules
-
-| Module | Directory | Responsibility |
-|--------|-----------|----------------|
-| **Agent** | `src/agents/` | Core message loop, context compression, session management, model failure retry |
-| **Providers** | `src/providers/` | Unified model calling interface, supports OpenAI/Anthropic compatible formats |
-| **Tools** | `src/tools/` | Tool registration, parameter validation, execution engine, supports custom extensions |
-| **Skills** | `src/skills/` | Skills system, inject professional knowledge and custom behaviors via SKILL.md |
-| **Channels** | `src/channels/` | Channel adapters, unified message format, supports long connections |
-| **Sessions** | `src/sessions/` | Session persistence, supports memory/file storage, Transcript recording |
-| **Gateway** | `src/gateway/` | HTTP/WebSocket service, routing |
-
-### Context Compression Strategy
-
-When conversation history exceeds token limit, Mozi uses intelligent compression:
-
-1. **Retention Strategy** — Always retain system prompt and last N rounds of conversation
-2. **Summary Compression** — Compress early conversations into summaries, preserving key information
-3. **Tool Result Trimming** — Truncate overly long tool return results
-4. **Pair Validation** — Ensure tool_call and tool_result appear in pairs
 
 ## Learning Agent Principles
 
