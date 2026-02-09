@@ -1,5 +1,3 @@
-# Mozi (墨子)
-
 <p align="center">
   <img src="./docs/images/mascot.svg" width="80" alt="Mozi Mascot" />
 </p>
