@@ -21,7 +21,7 @@
 
 **支持国产大模型和国产通讯软件的智能助手框架**
 
-Mozi 是一个轻量级的 AI 助手框架，专注于国产生态。它提供统一的接口对接多种国产 AI 模型（DeepSeek、豆包、Qwen、Kimi 等），支持 OpenAI Function Calling，并支持 QQ、飞书、钉钉、企业微信等通讯平台。
+OpenMozi 是一个轻量级的 AI 助手框架，专注于国产生态。它提供统一的接口对接多种国产 AI 模型（DeepSeek、豆包、Qwen、Kimi 等），支持 OpenAI Function Calling，并支持 QQ、飞书、钉钉、企业微信等通讯平台。
 
 ## 核心特性
 
@@ -37,7 +37,7 @@ Mozi 是一个轻量级的 AI 助手框架，专注于国产生态。它提供�
 
 ### 上下文压缩策略
 
-当对话历史超过 Token 限制时，Mozi 使用智能压缩：
+当对话历史超过 Token 限制时，OpenMozi 使用智能压缩：
 
 1. **保留策略** — 始终保留系统提示词和最近 N 轮对话
 2. **摘要压缩** — 将早期对话压缩为摘要，保留关键信息
@@ -58,11 +58,11 @@ Mozi 是一个轻量级的 AI 助手框架，专注于国产生态。它提供�
 - **会话管理** — 上下文压缩、会话持久化、多轮对话
 - **可扩展** — 插件系统、Hook 事件、自定义工具、子 Agent
 
-## 为什么选择 Mozi？
+## 为什么选择 OpenMozi？
 
-Mozi 的架构设计参考了 [Moltbot](https://github.com/moltbot/moltbot)，但专注于不同的使用场景：
+OpenMozi 的架构设计参考了 [Moltbot](https://github.com/moltbot/moltbot)，但专注于不同的使用场景：
 
-| 特性 | Mozi | Moltbot |
+| 特性 | OpenMozi | Moltbot |
 |------|------|---------|
 | **定位** | 国产生态优先的轻量框架 | 全功能个人 AI 助手 |
 | **代码量** | ~16,000 行 (64 文件) | ~516,000 行 (3,137 文件) |
@@ -71,7 +71,7 @@ Mozi 的架构设计参考了 [Moltbot](https://github.com/moltbot/moltbot)，�
 | **适用场景** | 企业内部机器人、国内团队协作 | 个人多设备助手、海外平台集成 |
 | **学习 Agent 原理** | 代码简洁清晰，适合学习 | 代码庞大复杂，学习门槛高 |
 
-> **Mozi 用 3% 的代码量实现了核心功能**，专注简洁高效，易于理解和二次开发。
+> **OpenMozi 用 3% 的代码量实现了核心功能**，专注简洁高效，易于理解和二次开发。
 > 适合 [学习 Agent 原理](#学习-agent-原理)，深入了解 AI 助手的架构设计。
 
 ## 快速开始
@@ -318,7 +318,7 @@ QQ、飞书和钉钉都支持长连接模式，企业微信使用 Webhook 回调
 
 ## Skills 技能系统
 
-Skills 是 Mozi 的可扩展知识注入系统，通过编写 `SKILL.md` 文件，可以为 Agent 添加专业知识、自定义行为规则或领域能力，无需修改代码。
+Skills 是 OpenMozi 的可扩展知识注入系统，通过编写 `SKILL.md` 文件，可以为 Agent 添加专业知识、自定义行为规则或领域能力，无需修改代码。
 
 ### 工作原理
 
@@ -515,7 +515,7 @@ Agent 可以通过内置工具管理定时任务：
 
 ## 插件系统
 
-插件系统允许扩展 Mozi 的功能，支持自动发现和加载。
+插件系统允许扩展 OpenMozi 的功能，支持自动发现和加载。
 
 ### 插件目录
 
@@ -669,7 +669,7 @@ console.log(response.content);
 
 ## 学习 Agent 原理
 
-如果你想了解 AI Agent 的工作原理，Mozi 是一个很好的学习项目。相比动辄几十万行代码的大型框架，Mozi 只有约 16,000 行代码，但实现了完整的 Agent 核心功能。
+如果你想了解 AI Agent 的工作原理，OpenMozi 是一个很好的学习项目。相比动辄几十万行代码的大型框架，OpenMozi 只有约 16,000 行代码，但实现了完整的 Agent 核心功能。
 
 ### 架构图
 
@@ -779,7 +779,7 @@ flowchart TD
 
 ### 上下文压缩策略
 
-当对话历史超过 Token 限制时，Mozi 使用智能压缩：
+当对话历史超过 Token 限制时，OpenMozi 使用智能压缩：
 
 1. **保留策略** — 始终保留系统提示词和最近 N 轮对话
 2. **摘要压缩** — 将早期对话压缩为摘要，保留关键信息
@@ -813,7 +813,7 @@ npm test
 
 ## Docker 部署
 
-Mozi 提供完整的 Docker 部署支持，包含 Dockerfile 和 Docker Compose 配置。
+OpenMozi 提供完整的 Docker 部署支持，包含 Dockerfile 和 Docker Compose 配置。
 
 ### 方式一：Docker Compose（推荐）
 
