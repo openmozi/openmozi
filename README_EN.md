@@ -21,13 +21,13 @@
 
 **An Intelligent Assistant Framework Supporting Chinese AI Models and Communication Platforms**
 
-OpenMozi is a lightweight AI assistant framework focused on the Chinese ecosystem. It provides a unified interface for various Chinese AI models (DeepSeek, Doubao, Qwen, Kimi, etc.), supports OpenAI Function Calling, and integrates with QQ, Feishu, DingTalk, and WeCom platforms.
+OpenMozi is a lightweight AI assistant framework focused on the Chinese ecosystem. Built on [pi-agent-core](https://github.com/nicemicro/pi-agent-core) for the Agent runtime and [pi-ai](https://github.com/nicemicro/pi-ai) as the unified multi-model calling layer (supporting 25+ providers), it natively supports Function Calling and integrates with QQ, Feishu, DingTalk, and WeCom platforms.
 
 ## Core Features
 
-- **Multi-Model Support** — DeepSeek, Doubao, DashScope (Qwen), Zhipu AI, Kimi, StepFun, MiniMax, plus OpenAI/Anthropic compatible formats
+- **Multi-Model Support** — Built on pi-ai unified calling layer, supporting DeepSeek, Doubao, DashScope (Qwen), Zhipu AI, Kimi, StepFun, MiniMax, plus OpenAI/Anthropic/OpenRouter/Groq and 25+ providers
 - **Multi-Platform Channels** — QQ, Feishu, DingTalk, WeCom with unified message handling interface
-- **Function Calling** — Native support for OpenAI tools/tool_choice parameters
+- **Function Calling** — Based on pi-agent-core Agent runtime, native support for tool calling loops
 - **25 Built-in Tools** — File read/write, Bash execution, code search, web fetch, image analysis, browser automation, memory system, scheduled tasks, etc.
 - **Skills System** — Extend Agent capabilities through SKILL.md files, supporting custom behaviors and domain knowledge injection
 - **Memory System** — Cross-session long-term memory, automatically remembers user preferences and important information
@@ -110,33 +110,38 @@ Open your browser and visit `http://localhost:3000` to start chatting.
 
 ## Supported Model Providers
 
+> Built on [pi-ai](https://github.com/nicemicro/pi-ai), supporting 25+ model providers. Below are pre-configured providers. You can also connect any OpenAI/Anthropic compatible service via custom interfaces.
+
 ### Chinese Models
 
 | Provider | Environment Variable | Description |
 |----------|---------------------|-------------|
 | DeepSeek | `DEEPSEEK_API_KEY` | Strong reasoning, cost-effective |
 | Doubao | `DOUBAO_API_KEY` | ByteDance Volcano Engine, Seed deep thinking series, 256k context |
-| DashScope | `DASHSCOPE_API_KEY` | Alibaba Cloud, Qwen commercial version, stable high concurrency |
-| Zhipu AI | `ZHIPU_API_KEY` | GLM-Z1/GLM-4 series, Tsinghua tech team, free tier available |
+| DashScope | `DASHSCOPE_API_KEY` | Alibaba Cloud Bailian, Qwen commercial version, stable high concurrency |
+| Zhipu AI | `ZHIPU_API_KEY` | GLM-Z1/GLM-4/GLM-5 series, Tsinghua tech team, free tier available |
 | ModelScope | `MODELSCOPE_API_KEY` | Alibaba ModelScope community, Qwen open source, free tier available |
 | Kimi | `KIMI_API_KEY` | Kimi K2.5/Moonshot series, long context support |
 | StepFun | `STEPFUN_API_KEY` | Step-2/Step-1 series, reasoning and multimodal |
-| MiniMax | `MINIMAX_API_KEY` | MiniMax M2.1 series, strong reasoning |
+| MiniMax | `MINIMAX_API_KEY` | MiniMax M2.5/M2.1 series, strong reasoning |
 
 ### International Models
 
 | Provider | Environment Variable | Description |
 |----------|---------------------|-------------|
-| OpenAI | `OPENAI_API_KEY` | GPT-4o, GPT-4, GPT-3.5 |
+| OpenAI | `OPENAI_API_KEY` | GPT-4o, o1, o3 series |
+| Anthropic | `ANTHROPIC_API_KEY` | Claude 4 series (via pi-ai built-in support) |
 | OpenRouter | `OPENROUTER_API_KEY` | Multi-model aggregation, unified API |
 | Together AI | `TOGETHER_API_KEY` | Open source model hosting, Llama, Mixtral, etc. |
 | Groq | `GROQ_API_KEY` | Ultra-fast inference speed |
+| Google | `GOOGLE_API_KEY` | Gemini series (via pi-ai built-in support) |
 
 ### Local Deployment
 
 | Provider | Environment Variable | Description |
 |----------|---------------------|-------------|
 | Ollama | `OLLAMA_BASE_URL` | Run open source models locally |
+| vLLM | `VLLM_BASE_URL` | High-performance local inference server |
 
 ### Custom Interfaces
 
@@ -603,9 +608,9 @@ mozi logs --level error # Show only error logs
 
 ```
 src/
-├── agents/        # Agent core (message loop, context compression, session management)
+├── agents/        # Agent core (based on pi-agent-core, message loop, context compression, session management)
 ├── channels/      # Channel adapters (QQ, Feishu, DingTalk, WeCom)
-├── providers/     # Model providers (unified interface)
+├── providers/     # Model resolution (based on pi-ai, maps config to unified Model objects)
 ├── tools/         # Built-in tools (file, Bash, network, scheduled tasks, etc.)
 ├── skills/        # Skills system (SKILL.md loading, registration)
 ├── sessions/      # Session storage (memory, file)
@@ -630,18 +635,25 @@ skills/            # Built-in skills
 ## API Usage
 
 ```typescript
-import { loadConfig, initializeProviders, getProvider } from "mozi-bot";
+import { loadConfig, initializeProviders, resolveModel, getApiKeyForProvider } from "mozi-bot";
+import { completeSimple } from "@mariozechner/pi-ai";
 
 const config = loadConfig();
 initializeProviders(config);
 
-const provider = getProvider("deepseek");
-const response = await provider.chat({
-  model: "deepseek-chat",
-  messages: [{ role: "user", content: "Hello!" }],
-});
+const model = resolveModel("deepseek", "deepseek-chat");
+const apiKey = getApiKeyForProvider("deepseek");
 
-console.log(response.content);
+const response = await completeSimple(model, {
+  messages: [{ role: "user", content: "Hello!", timestamp: Date.now() }],
+  tools: [],
+}, { apiKey });
+
+const text = response.content
+  .filter(c => c.type === "text")
+  .map(c => c.text)
+  .join("");
+console.log(text);
 ```
 
 ## Learning Agent Principles
@@ -746,8 +758,8 @@ flowchart TD
 
 | Module | Directory | Responsibility |
 |--------|-----------|----------------|
-| **Agent** | `src/agents/` | Core message loop, context compression, session management, model failure retry |
-| **Providers** | `src/providers/` | Unified model calling interface, supports OpenAI/Anthropic compatible formats |
+| **Agent** | `src/agents/` | Core message loop, context compression, session management (based on pi-agent-core) |
+| **Providers** | `src/providers/` | Model resolution and mapping layer (based on pi-ai, supporting 25+ providers) |
 | **Tools** | `src/tools/` | Tool registration, parameter validation, execution engine, supports custom extensions |
 | **Skills** | `src/skills/` | Skills system, inject professional knowledge and custom behaviors via SKILL.md |
 | **Channels** | `src/channels/` | Channel adapters, unified message format, supports long connections |
@@ -773,7 +785,6 @@ The code structure is clear with complete comments, suitable for reading source 
 - **Memory System** — Cross-session long-term memory, storage and retrieval
 - **Skills System** — SKILL.md loading, knowledge injection, system prompt extension
 - **Streaming Output** — SSE/WebSocket real-time responses
-- **Failure Retry** — Automatic fallback to alternative models on failure
 
 ## Development
 

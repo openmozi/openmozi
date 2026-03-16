@@ -12,20 +12,12 @@ export { loadConfig, validateRequiredConfig } from "./config/index.js";
 
 // 模型提供商
 export {
-  BaseProvider,
-  DeepSeekProvider,
-  KimiProvider,
-  StepfunProvider,
-  MiniMaxProvider,
-  createDeepSeekProvider,
-  createKimiProvider,
-  createStepfunProvider,
-  createMiniMaxProvider,
   initializeProviders,
-  getProvider,
   getAllProviders,
-  findProviderForModel,
   getAllModels,
+  resolveModel,
+  getApiKeyForProvider,
+  isProviderAvailable,
 } from "./providers/index.js";
 
 // 通道
@@ -52,8 +44,6 @@ export {
   summarizeInStages,
   limitHistoryTurns,
   pruneHistoryForContextShare,
-  FailoverError,
-  runWithModelFallback,
 } from "./agents/index.js";
 
 // Tools

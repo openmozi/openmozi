@@ -5,9 +5,10 @@
  */
 
 import { Command } from "commander";
+import type { Message } from "@mariozechner/pi-ai";
 import { loadConfig, validateRequiredConfig } from "../config/index.js";
 import { startGateway } from "../gateway/server.js";
-import { initializeProviders, getAllProviders, getAllModels } from "../providers/index.js";
+import { initializeProviders, getAllModels, resolveModel, getApiKeyForProvider } from "../providers/index.js";
 import { createLogger, setLogger, getLogDir, getLogFile } from "../utils/logger.js";
 import dotenv from "dotenv";
 import { spawn } from "child_process";
@@ -187,13 +188,15 @@ program
       console.log(`   提供商: ${provider}`);
       console.log(`   输入 'exit' 退出\n`);
 
-      const { getProvider, findProviderForModel } = await import("../providers/index.js");
-      const p = options.provider ? getProvider(options.provider) : findProviderForModel(model);
+      const { streamSimple } = await import("@mariozechner/pi-ai");
+      const piModel = resolveModel(provider, model);
 
-      if (!p) {
+      if (!piModel) {
         console.error(`找不到模型 ${model} 的提供商`);
         process.exit(1);
       }
+
+      const apiKey = getApiKeyForProvider(provider);
 
       const messages: Array<{ role: "user" | "assistant"; content: string }> = [];
 
@@ -211,14 +214,36 @@ program
             process.stdout.write("AI: ");
             let fullResponse = "";
 
-            for await (const chunk of p.chatStream({
-              model,
-              messages,
+            const piMessages: Message[] = messages.map((m): Message => {
+              if (m.role === "user") {
+                return { role: "user" as const, content: m.content, timestamp: Date.now() };
+              }
+              return {
+                role: "assistant" as const,
+                content: [{ type: "text" as const, text: m.content }],
+                timestamp: Date.now(),
+                api: "openai-completions" as const,
+                provider: provider,
+                model: model,
+                usage: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, totalTokens: 0, cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 } },
+                stopReason: "stop" as const,
+              };
+            });
+
+            const eventStream = streamSimple(piModel, {
+              messages: piMessages,
+              tools: [],
+            }, {
               temperature: config.agent.temperature,
               maxTokens: config.agent.maxTokens,
-            })) {
-              process.stdout.write(chunk.delta);
-              fullResponse += chunk.delta;
+              apiKey,
+            });
+
+            for await (const event of eventStream) {
+              if (event.type === "text_delta") {
+                process.stdout.write(event.delta);
+                fullResponse += event.delta;
+              }
             }
 
             console.log("\n");

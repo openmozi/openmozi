@@ -18,8 +18,6 @@ import { JsonMemoryStore } from "./store.js";
 import { cosineSimilarity } from "./store.js";
 import { ProviderEmbedding } from "./embeddings.js";
 import type { ProviderId } from "../types/index.js";
-import { getProvider } from "../providers/index.js";
-import type { BaseProvider } from "../providers/base.js";
 
 const logger = getChildLogger("memory-manager");
 
@@ -336,18 +334,16 @@ export class MemoryManager {
     directory?: string;
     embeddingProvider?: ProviderId;
     embeddingModel?: string;
-    provider?: BaseProvider;
+    provider?: {
+      supportsEmbedding(): boolean;
+      embed(texts: string[], model?: string): Promise<number[][]>;
+    };
   }) {
     // Create embedding provider
     let embeddingProvider: EmbeddingProvider | undefined;
 
     if (config?.provider) {
       embeddingProvider = new ProviderEmbedding(config.provider, config.embeddingModel);
-    } else if (config?.embeddingProvider) {
-      const provider = getProvider(config.embeddingProvider);
-      if (provider?.supportsEmbedding()) {
-        embeddingProvider = new ProviderEmbedding(provider, config.embeddingModel);
-      }
     }
 
     // Create store
@@ -446,7 +442,10 @@ export function createMemoryManager(config?: {
   directory?: string;
   embeddingProvider?: ProviderId;
   embeddingModel?: string;
-  provider?: BaseProvider;
+  provider?: {
+    supportsEmbedding(): boolean;
+    embed(texts: string[], model?: string): Promise<number[][]>;
+  };
 }): MemoryManager {
   return new MemoryManager(config);
 }

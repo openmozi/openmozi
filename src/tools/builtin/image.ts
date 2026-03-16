@@ -5,10 +5,11 @@
 import { Type } from "@sinclair/typebox";
 import type { Tool } from "../types.js";
 import { jsonResult, errorResult, readStringParam } from "../common.js";
-import { getProvider, findProviderForModel } from "../../providers/index.js";
+import { resolveModel, getApiKeyForProvider, isProviderAvailable } from "../../providers/index.js";
 import type { ProviderId } from "../../types/index.js";
 import { readFileSync, existsSync } from "fs";
 import { extname } from "path";
+import { completeSimple } from "@mariozechner/pi-ai";
 
 /** 图片分析工具选项 */
 export interface ImageAnalyzeToolOptions {
@@ -54,82 +55,80 @@ export function createImageAnalyzeTool(options?: ImageAnalyzeToolOptions): Tool 
         let imageData: { url?: string; base64?: string; mediaType?: string };
 
         if (image.startsWith("http://") || image.startsWith("https://")) {
-          // URL
           imageData = { url: image };
         } else if (image.startsWith("data:")) {
-          // Data URL
           const match = image.match(/^data:([^;]+);base64,(.+)$/);
           if (!match) {
             return errorResult("Invalid data URL format");
           }
           imageData = { base64: match[2], mediaType: match[1] };
         } else if (existsSync(image)) {
-          // 文件路径
           const buffer = readFileSync(image);
           imageData = {
             base64: buffer.toString("base64"),
             mediaType: getMimeType(image),
           };
         } else if (/^[A-Za-z0-9+/=]+$/.test(image) && image.length > 100) {
-          // 纯 base64
           imageData = { base64: image, mediaType: "image/jpeg" };
         } else {
           return errorResult("Invalid image source. Provide a URL, file path, or base64 data.");
         }
 
         // 查找支持视觉的模型
-        let provider = providerParam ? getProvider(providerParam) : undefined;
-        let model = modelParam;
+        const visionCandidates: Array<{ provider: ProviderId; model: string }> = [
+          { provider: "kimi", model: "kimi-latest" },
+          { provider: "minimax", model: "MiniMax-VL-01" },
+          { provider: "stepfun", model: "step-1v-8k" },
+        ];
 
-        if (!provider || !model) {
-          // 尝试找到支持视觉的模型
-          const visionModels = [
-            { provider: "kimi" as ProviderId, model: "kimi-latest" },
-            { provider: "minimax" as ProviderId, model: "MiniMax-VL-01" },
-            { provider: "stepfun" as ProviderId, model: "step-1v-8k" },
-          ];
+        let selectedProvider = providerParam ?? options?.defaultProvider;
+        let selectedModel = modelParam ?? options?.defaultModel;
 
-          for (const vm of visionModels) {
-            const p = getProvider(vm.provider);
-            if (p) {
-              provider = p;
-              model = vm.model;
+        if (!selectedProvider || !selectedModel) {
+          for (const vm of visionCandidates) {
+            if (isProviderAvailable(vm.provider)) {
+              selectedProvider = vm.provider;
+              selectedModel = vm.model;
               break;
             }
           }
         }
 
-        if (!provider || !model) {
+        if (!selectedProvider || !selectedModel) {
           return errorResult("No vision-capable model provider available");
         }
 
-        // 构建多模态消息
-        const response = await provider.chat({
-          model,
-          messages: [
-            {
-              role: "user",
-              content: [
-                { type: "text", text: prompt },
-                {
-                  type: "image",
-                  url: imageData.url,
-                  base64: imageData.base64,
-                  mediaType: imageData.mediaType,
-                },
-              ],
-            },
-          ],
+        const piModel = resolveModel(selectedProvider, selectedModel);
+        if (!piModel) {
+          return errorResult(`Cannot resolve model ${selectedProvider}/${selectedModel}`);
+        }
+
+        const apiKey = getApiKeyForProvider(selectedProvider);
+
+        // 构建用户消息（包含图片信息）
+        const userContent = imageData.url
+          ? `${prompt}\n\n![image](${imageData.url})`
+          : `${prompt}\n\n[Attached image: ${imageData.mediaType}, base64 length=${imageData.base64?.length}]`;
+
+        const response = await completeSimple(piModel, {
+          messages: [{ role: "user" as const, content: userContent, timestamp: Date.now() }],
+          tools: [],
+        }, {
+          apiKey,
           maxTokens: 2048,
         });
 
+        const assistantText = response.content
+          ?.filter((c): c is { type: "text"; text: string } => c.type === "text")
+          .map((c) => c.text)
+          .join("") ?? "";
+
         return jsonResult({
           status: "success",
-          provider: provider.id,
-          model,
+          provider: selectedProvider,
+          model: selectedModel,
           prompt,
-          analysis: response.content,
-          usage: response.usage,
+          analysis: assistantText,
         });
       } catch (error) {
         return errorResult(error instanceof Error ? error.message : String(error));

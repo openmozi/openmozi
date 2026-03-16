@@ -38,17 +38,6 @@ export interface ModelDefinition {
   };
 }
 
-/** 模型提供商配置 */
-export interface ProviderConfig {
-  id: ProviderId;
-  name: string;
-  baseUrl: string;
-  apiKey?: string;
-  api: ModelApi;
-  models: ModelDefinition[];
-  headers?: Record<string, string>;
-}
-
 /** 简化的提供商配置 (用于用户配置) */
 export interface SimpleProviderConfig {
   baseUrl?: string;
@@ -102,69 +91,6 @@ export interface ChatMessage {
   tool_call_id?: string;
   /** tool 消息中的工具名称 */
   name?: string;
-}
-
-/** OpenAI 工具定义 (用于请求参数) */
-export interface OpenAIToolDefinition {
-  type: "function";
-  function: {
-    name: string;
-    description: string;
-    parameters: unknown;
-  };
-}
-
-/** 聊天完成请求 */
-export interface ChatCompletionRequest {
-  model: string;
-  messages: ChatMessage[];
-  temperature?: number;
-  maxTokens?: number;
-  stream?: boolean;
-  topP?: number;
-  stop?: string[];
-  /** OpenAI 工具定义 */
-  tools?: OpenAIToolDefinition[];
-  /** 工具选择策略 */
-  tool_choice?: "auto" | "none" | { type: "function"; function: { name: string } };
-}
-
-/** 聊天完成响应 */
-export interface ChatCompletionResponse {
-  id: string;
-  model: string;
-  content: string;
-  /** assistant 的工具调用 */
-  toolCalls?: MessageToolCall[];
-  usage: {
-    promptTokens: number;
-    completionTokens: number;
-    totalTokens: number;
-  };
-  finishReason: "stop" | "length" | "content_filter" | "tool_calls";
-}
-
-/** 流式响应块 */
-export interface StreamChunk {
-  id: string;
-  delta: string;
-  finishReason?: string;
-  /** 流式工具调用增量 */
-  toolCallDeltas?: Array<{
-    index: number;
-    id?: string;
-    type?: string;
-    function?: {
-      name?: string;
-      arguments?: string;
-    };
-  }>;
-  /** Token 使用统计 (通常在最后一个 chunk 中) */
-  usage?: {
-    promptTokens: number;
-    completionTokens: number;
-    totalTokens: number;
-  };
 }
 
 // ============== 通道相关类型 ==============

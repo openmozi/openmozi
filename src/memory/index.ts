@@ -25,7 +25,8 @@ export type {
 export { MemorySearchManager } from "./manager.js";
 
 // Storage implementations
-export { SqliteMemoryStore, JsonMemoryStore, MemoryChunk } from "./store.js";
+export { SqliteMemoryStore, JsonMemoryStore } from "./store.js";
+export type { MemoryChunk } from "./store.js";
 
 // Embedding providers
 export {

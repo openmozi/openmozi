@@ -3,7 +3,8 @@
  */
 
 import type { ChatMessage, ProviderId } from "../types/index.js";
-import { getProvider, findProviderForModel } from "../providers/index.js";
+import { completeSimple } from "@mariozechner/pi-ai";
+import { resolveModel, getApiKeyForProvider } from "../providers/model-resolver.js";
 import { getChildLogger } from "../utils/logger.js";
 
 const logger = getChildLogger("compaction");
@@ -214,17 +215,12 @@ export async function generateSummary(
     return options.previousSummary ?? DEFAULT_SUMMARY_FALLBACK;
   }
 
-  const provider = options.provider
-    ? getProvider(options.provider)
-    : findProviderForModel(options.model ?? "");
+  const model = options.model && options.provider
+    ? resolveModel(options.provider, options.model)
+    : undefined;
 
-  if (!provider) {
-    logger.warn("No provider available for summarization");
-    return formatMessagesForSummary(messages).slice(0, 2000) + "...[truncated]";
-  }
-
-  const model = options.model ?? provider.getModels()[0]?.id;
   if (!model) {
+    logger.warn("No model available for summarization");
     return formatMessagesForSummary(messages).slice(0, 2000) + "...[truncated]";
   }
 
@@ -243,17 +239,29 @@ Provide a clear, structured summary in the same language as the conversation.`;
   const conversationText = formatMessagesForSummary(messages);
 
   try {
-    const response = await provider.chat({
+    const response = await completeSimple(
       model,
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: `Please summarize this conversation:\n\n${conversationText}` },
-      ],
-      temperature: 0.3,
-      maxTokens: 1000,
-    });
+      {
+        systemPrompt,
+        messages: [
+          { role: "user", content: `Please summarize this conversation:\n\n${conversationText}`, timestamp: Date.now() },
+        ],
+        tools: [],
+      },
+      {
+        temperature: 0.3,
+        maxTokens: 1000,
+        apiKey: options.provider ? getApiKeyForProvider(options.provider) : undefined,
+      },
+    );
 
-    return response.content;
+    // Extract text content from response
+    const content = response.content
+      .filter((c) => c.type === "text")
+      .map((c) => (c as { text: string }).text)
+      .join("");
+
+    return content || formatMessagesForSummary(messages).slice(0, 2000) + "...[truncated]";
   } catch (error) {
     logger.error({ error }, "Failed to generate summary");
     return formatMessagesForSummary(messages).slice(0, 2000) + "...[truncated]";

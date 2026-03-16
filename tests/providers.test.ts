@@ -1,8 +1,8 @@
 /**
- * 模型提供商测试
+ * 模型提供商测试 (基于 model-resolver)
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 
 // Mock logger
 vi.mock("../src/utils/logger.js", () => ({
@@ -14,352 +14,184 @@ vi.mock("../src/utils/logger.js", () => ({
   }),
 }));
 
-// 需要在 mock 之后导入
 import {
-  registerProvider,
-  getProvider,
+  initializeProviders,
   getAllProviders,
-  hasProvider,
-  findProviderForModel,
   getAllModels,
-  BaseProvider,
+  resolveModel,
+  getApiKeyForProvider,
+  isProviderAvailable,
+  hasProvider,
 } from "../src/providers/index.js";
-import type { ProviderConfig, ChatCompletionRequest, ChatCompletionResponse, StreamChunk } from "../src/types/index.js";
+import type { MoziConfig } from "../src/types/index.js";
 
-// 创建一个测试用的 Provider 实现
-class TestProvider extends BaseProvider {
-  async chat(_request: ChatCompletionRequest): Promise<ChatCompletionResponse> {
-    return {
-      id: "test-id",
-      model: this.config.models[0]?.id ?? "test-model",
-      choices: [
-        {
-          index: 0,
-          message: { role: "assistant", content: "Test response" },
-          finish_reason: "stop",
-        },
-      ],
-      usage: { prompt_tokens: 10, completion_tokens: 20, total_tokens: 30 },
-    };
-  }
-
-  async *chatStream(_request: ChatCompletionRequest): AsyncGenerator<StreamChunk, void, unknown> {
-    yield { type: "content", content: "Test " };
-    yield { type: "content", content: "response" };
-    yield { type: "done", finish_reason: "stop" };
-  }
+function makeConfig(providers: Record<string, any>): MoziConfig {
+  return {
+    providers,
+    channels: {},
+    agent: { defaultModel: "test-model", defaultProvider: "deepseek" },
+    server: { port: 3000 },
+    logging: { level: "error" },
+  };
 }
 
-describe("providers", () => {
-  // 保存原始状态
-  let originalProviders: Map<string, BaseProvider>;
-
+describe("providers (model-resolver)", () => {
   beforeEach(() => {
-    // 清空 providers（通过私有访问）
-    // 由于 providers 是模块级别的 Map，我们需要通过注册来测试
+    // 重新初始化，清除之前的注册
+    initializeProviders(makeConfig({}));
   });
 
-  describe("registerProvider", () => {
-    it("should register a provider", () => {
-      const config: ProviderConfig = {
-        id: "test-provider-1",
-        name: "Test Provider 1",
-        baseUrl: "https://api.test.com",
-        apiKey: "test-key",
-        models: [
-          { id: "model-1", name: "Model 1", contextWindow: 4096 },
-        ],
-      };
-
-      const provider = new TestProvider(config);
-      registerProvider(provider);
-
-      expect(hasProvider("test-provider-1")).toBe(true);
-      expect(getProvider("test-provider-1")).toBe(provider);
+  describe("initializeProviders", () => {
+    it("should initialize without error when no providers configured", () => {
+      expect(() => initializeProviders(makeConfig({}))).not.toThrow();
     });
 
-    it("should overwrite existing provider with same id", () => {
-      const config1: ProviderConfig = {
-        id: "test-provider-2",
-        name: "Test Provider 2",
-        baseUrl: "https://api.test.com",
-        apiKey: "key-1",
-        models: [{ id: "model-1", name: "Model 1", contextWindow: 4096 }],
-      };
+    it("should register china provider models", () => {
+      initializeProviders(makeConfig({
+        deepseek: { apiKey: "sk-test" },
+      }));
 
-      const config2: ProviderConfig = {
-        id: "test-provider-2",
-        name: "Test Provider 2 Updated",
-        baseUrl: "https://api.test.com",
-        apiKey: "key-2",
-        models: [{ id: "model-2", name: "Model 2", contextWindow: 8192 }],
-      };
+      const models = getAllModels();
+      const deepseekModels = models.filter((m) => m.provider === "deepseek");
+      expect(deepseekModels.length).toBeGreaterThan(0);
+    });
 
-      const provider1 = new TestProvider(config1);
-      const provider2 = new TestProvider(config2);
+    it("should register multiple providers", () => {
+      initializeProviders(makeConfig({
+        deepseek: { apiKey: "sk-test-1" },
+        kimi: { apiKey: "sk-test-2" },
+      }));
 
-      registerProvider(provider1);
-      registerProvider(provider2);
-
-      const result = getProvider("test-provider-2");
-      expect(result?.name).toBe("Test Provider 2 Updated");
+      const models = getAllModels();
+      const deepseekModels = models.filter((m) => m.provider === "deepseek");
+      const kimiModels = models.filter((m) => m.provider === "kimi");
+      expect(deepseekModels.length).toBeGreaterThan(0);
+      expect(kimiModels.length).toBeGreaterThan(0);
     });
   });
 
-  describe("getProvider", () => {
-    it("should return undefined for non-existent provider", () => {
-      expect(getProvider("non-existent-provider")).toBeUndefined();
+  describe("resolveModel", () => {
+    it("should resolve registered china provider model", () => {
+      initializeProviders(makeConfig({
+        deepseek: { apiKey: "sk-test" },
+      }));
+
+      const model = resolveModel("deepseek", "deepseek-chat");
+      expect(model).toBeDefined();
+      expect(model!.id).toBe("deepseek-chat");
+      expect(model!.api).toBe("openai-completions");
     });
 
-    it("should return registered provider", () => {
-      const config: ProviderConfig = {
-        id: "test-provider-3",
-        name: "Test Provider 3",
-        baseUrl: "https://api.test.com",
-        apiKey: "test-key",
-        models: [{ id: "model-1", name: "Model 1", contextWindow: 4096 }],
-      };
+    it("should return undefined for unknown provider", () => {
+      const model = resolveModel("unknown-provider" as any, "some-model");
+      expect(model).toBeUndefined();
+    });
 
-      const provider = new TestProvider(config);
-      registerProvider(provider);
+    it("should dynamically resolve unknown model for known provider", () => {
+      initializeProviders(makeConfig({
+        deepseek: { apiKey: "sk-test" },
+      }));
 
-      expect(getProvider("test-provider-3")).toBe(provider);
+      const model = resolveModel("deepseek", "deepseek-v999-unknown");
+      expect(model).toBeDefined();
+      expect(model!.id).toBe("deepseek-v999-unknown");
+    });
+
+    it("should use custom baseUrl if provided", () => {
+      initializeProviders(makeConfig({
+        deepseek: { apiKey: "sk-test", baseUrl: "https://custom.api.com/v1" },
+      }));
+
+      const model = resolveModel("deepseek", "deepseek-chat");
+      expect(model).toBeDefined();
+      expect(model!.baseUrl).toBe("https://custom.api.com/v1");
     });
   });
 
-  describe("hasProvider", () => {
-    it("should return false for non-existent provider", () => {
-      expect(hasProvider("definitely-not-exists")).toBe(false);
+  describe("getApiKeyForProvider", () => {
+    it("should return api key for configured provider", () => {
+      initializeProviders(makeConfig({
+        deepseek: { apiKey: "sk-my-key" },
+      }));
+
+      expect(getApiKeyForProvider("deepseek")).toBe("sk-my-key");
     });
 
-    it("should return true for registered provider", () => {
-      const config: ProviderConfig = {
-        id: "test-provider-4",
-        name: "Test Provider 4",
-        baseUrl: "https://api.test.com",
-        apiKey: "test-key",
-        models: [{ id: "model-1", name: "Model 1", contextWindow: 4096 }],
-      };
+    it("should return undefined for unconfigured provider", () => {
+      expect(getApiKeyForProvider("unconfigured" as any)).toBeUndefined();
+    });
+  });
 
-      const provider = new TestProvider(config);
-      registerProvider(provider);
+  describe("isProviderAvailable", () => {
+    it("should return true for configured provider with apiKey", () => {
+      initializeProviders(makeConfig({
+        kimi: { apiKey: "sk-test" },
+      }));
 
-      expect(hasProvider("test-provider-4")).toBe(true);
+      expect(isProviderAvailable("kimi")).toBe(true);
+    });
+
+    it("should return false for unconfigured provider", () => {
+      expect(isProviderAvailable("kimi")).toBe(false);
+    });
+
+    it("should return false for provider without apiKey", () => {
+      initializeProviders(makeConfig({
+        kimi: {},
+      }));
+
+      expect(isProviderAvailable("kimi")).toBe(false);
     });
   });
 
   describe("getAllProviders", () => {
-    it("should return array of providers", () => {
+    it("should return array of provider info", () => {
+      initializeProviders(makeConfig({
+        deepseek: { apiKey: "sk-test" },
+      }));
+
       const providers = getAllProviders();
       expect(Array.isArray(providers)).toBe(true);
-    });
-  });
-
-  describe("findProviderForModel", () => {
-    it("should find provider that supports model", () => {
-      const config: ProviderConfig = {
-        id: "test-provider-5",
-        name: "Test Provider 5",
-        baseUrl: "https://api.test.com",
-        apiKey: "test-key",
-        models: [
-          { id: "special-model-xyz", name: "Special Model", contextWindow: 4096 },
-        ],
-      };
-
-      const provider = new TestProvider(config);
-      registerProvider(provider);
-
-      const found = findProviderForModel("special-model-xyz");
-      expect(found).toBe(provider);
-    });
-
-    it("should return undefined for unknown model", () => {
-      const found = findProviderForModel("unknown-model-abc-123");
-      expect(found).toBeUndefined();
+      const ds = providers.find((p) => p.id === "deepseek");
+      expect(ds).toBeDefined();
+      expect(ds!.name).toBeTruthy();
     });
   });
 
   describe("getAllModels", () => {
-    it("should return array of models with provider info", () => {
-      const config: ProviderConfig = {
-        id: "test-provider-6",
-        name: "Test Provider 6",
-        baseUrl: "https://api.test.com",
-        apiKey: "test-key",
-        models: [
-          { id: "model-a", name: "Model A", contextWindow: 4096 },
-          { id: "model-b", name: "Model B", contextWindow: 8192 },
-        ],
-      };
-
-      const provider = new TestProvider(config);
-      registerProvider(provider);
-
+    it("should return empty array when no providers configured", () => {
+      initializeProviders(makeConfig({}));
       const models = getAllModels();
       expect(Array.isArray(models)).toBe(true);
-
-      const modelA = models.find((m) => m.model.id === "model-a");
-      expect(modelA).toBeDefined();
-      expect(modelA?.provider).toBe("test-provider-6");
-    });
-  });
-});
-
-describe("BaseProvider", () => {
-  describe("properties", () => {
-    it("should expose id, name, baseUrl, apiKey", () => {
-      const config: ProviderConfig = {
-        id: "base-test",
-        name: "Base Test Provider",
-        baseUrl: "https://api.base.test",
-        apiKey: "base-api-key",
-        models: [{ id: "model-1", name: "Model 1", contextWindow: 4096 }],
-      };
-
-      const provider = new TestProvider(config);
-
-      expect(provider.id).toBe("base-test");
-      expect(provider.name).toBe("Base Test Provider");
-      expect(provider.baseUrl).toBe("https://api.base.test");
-      expect(provider.apiKey).toBe("base-api-key");
     });
 
-    it("should handle undefined apiKey", () => {
-      const config: ProviderConfig = {
-        id: "no-key-test",
-        name: "No Key Provider",
-        baseUrl: "https://api.nokey.test",
-        models: [{ id: "model-1", name: "Model 1", contextWindow: 4096 }],
-      };
+    it("should return models with provider and model info", () => {
+      initializeProviders(makeConfig({
+        zhipu: { apiKey: "sk-test" },
+      }));
 
-      const provider = new TestProvider(config);
-      expect(provider.apiKey).toBeUndefined();
-    });
-  });
+      const models = getAllModels();
+      const zhipuModels = models.filter((m) => m.provider === "zhipu");
+      expect(zhipuModels.length).toBeGreaterThan(0);
 
-  describe("supportsModel", () => {
-    it("should return true for supported model", () => {
-      const config: ProviderConfig = {
-        id: "model-support-test",
-        name: "Model Support Test",
-        baseUrl: "https://api.test.com",
-        models: [
-          { id: "supported-model", name: "Supported", contextWindow: 4096 },
-        ],
-      };
-
-      const provider = new TestProvider(config);
-      expect(provider.supportsModel("supported-model")).toBe(true);
-    });
-
-    it("should return false for unsupported model", () => {
-      const config: ProviderConfig = {
-        id: "model-support-test-2",
-        name: "Model Support Test 2",
-        baseUrl: "https://api.test.com",
-        models: [
-          { id: "only-this-model", name: "Only Model", contextWindow: 4096 },
-        ],
-      };
-
-      const provider = new TestProvider(config);
-      expect(provider.supportsModel("other-model")).toBe(false);
-    });
-  });
-
-  describe("getModels", () => {
-    it("should return configured models", () => {
-      const config: ProviderConfig = {
-        id: "get-models-test",
-        name: "Get Models Test",
-        baseUrl: "https://api.test.com",
-        models: [
-          { id: "model-1", name: "Model 1", contextWindow: 4096 },
-          { id: "model-2", name: "Model 2", contextWindow: 8192 },
-        ],
-      };
-
-      const provider = new TestProvider(config);
-      const models = provider.getModels();
-
-      expect(models).toHaveLength(2);
-      expect(models[0]?.id).toBe("model-1");
-      expect(models[1]?.id).toBe("model-2");
-    });
-  });
-
-  describe("supportsEmbedding", () => {
-    it("should return false by default", () => {
-      const config: ProviderConfig = {
-        id: "embedding-test",
-        name: "Embedding Test",
-        baseUrl: "https://api.test.com",
-        models: [{ id: "model-1", name: "Model 1", contextWindow: 4096 }],
-      };
-
-      const provider = new TestProvider(config);
-      expect(provider.supportsEmbedding()).toBe(false);
-    });
-  });
-
-  describe("embed", () => {
-    it("should throw error by default", async () => {
-      const config: ProviderConfig = {
-        id: "embed-test",
-        name: "Embed Test",
-        baseUrl: "https://api.test.com",
-        models: [{ id: "model-1", name: "Model 1", contextWindow: 4096 }],
-      };
-
-      const provider = new TestProvider(config);
-      await expect(provider.embed(["text"])).rejects.toThrow("Embedding not supported");
-    });
-  });
-
-  describe("chat", () => {
-    it("should return chat response", async () => {
-      const config: ProviderConfig = {
-        id: "chat-test",
-        name: "Chat Test",
-        baseUrl: "https://api.test.com",
-        models: [{ id: "chat-model", name: "Chat Model", contextWindow: 4096 }],
-      };
-
-      const provider = new TestProvider(config);
-      const response = await provider.chat({
-        model: "chat-model",
-        messages: [{ role: "user", content: "Hello" }],
-      });
-
-      expect(response.id).toBe("test-id");
-      expect(response.choices[0]?.message.content).toBe("Test response");
-    });
-  });
-
-  describe("chatStream", () => {
-    it("should yield stream chunks", async () => {
-      const config: ProviderConfig = {
-        id: "stream-test",
-        name: "Stream Test",
-        baseUrl: "https://api.test.com",
-        models: [{ id: "stream-model", name: "Stream Model", contextWindow: 4096 }],
-      };
-
-      const provider = new TestProvider(config);
-      const chunks: StreamChunk[] = [];
-
-      for await (const chunk of provider.chatStream({
-        model: "stream-model",
-        messages: [{ role: "user", content: "Hello" }],
-      })) {
-        chunks.push(chunk);
+      for (const m of zhipuModels) {
+        expect(m.model).toBeDefined();
+        expect(m.model.id).toBeTruthy();
       }
+    });
+  });
 
-      expect(chunks).toHaveLength(3);
-      expect(chunks[0]).toEqual({ type: "content", content: "Test " });
-      expect(chunks[1]).toEqual({ type: "content", content: "response" });
-      expect(chunks[2]).toEqual({ type: "done", finish_reason: "stop" });
+  describe("hasProvider", () => {
+    it("should return true for configured provider", () => {
+      initializeProviders(makeConfig({
+        stepfun: { apiKey: "sk-test" },
+      }));
+
+      expect(hasProvider("stepfun")).toBe(true);
+    });
+
+    it("should return false for unconfigured provider", () => {
+      expect(hasProvider("stepfun")).toBe(false);
     });
   });
 });
