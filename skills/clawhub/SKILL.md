@@ -24,10 +24,10 @@ clawhub search <query>
 
 ### Install a skill
 
-Always use `--workdir` to install into the mozi workspace skills directory:
+Always use `--workdir` to install into the mozi user skills directory:
 
 ```bash
-clawhub install <slug> --workdir ./.mozi/skills
+clawhub install <slug> --workdir ~/.mozi/skills
 ```
 
 ### List installed skills
@@ -39,7 +39,7 @@ clawhub list
 ### Update installed skills
 
 ```bash
-clawhub update --workdir ./.mozi/skills
+clawhub update --workdir ~/.mozi/skills
 ```
 
 ### Publish a skill
@@ -50,6 +50,6 @@ clawhub publish <directory>
 
 ## Important Notes
 
-- Always install skills with `--workdir ./.mozi/skills` so mozi can discover and load them.
+- Always install skills with `--workdir ~/.mozi/skills` so mozi can discover and load them.
 - After installing a skill, inform the user that mozi needs to be restarted (or skills reloaded) for the new skill to take effect.
 - When the user asks to find or install a skill, use `clawhub search` to help them discover available options on ClawdHub.
