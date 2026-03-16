@@ -25,6 +25,7 @@ import {
 } from "../tools/index.js";
 import { toAgentTools } from "../tools/agent-tool-adapter.js";
 import {
+  estimateMessageTokens,
   estimateMessagesTokens,
   summarizeInStages,
   limitHistoryTurns,
@@ -315,6 +316,8 @@ export class Agent {
       throw new Error(`Cannot resolve model: ${this.options.provider}/${this.options.model}`);
     }
 
+    const contextWindow = model.contextWindow ?? this.options.contextWindow;
+
     const piAgent = new PiAgent({
       streamFn: ((m: any, ctx: any, opts: any) => {
         return streamSimple(m, ctx, {
@@ -324,6 +327,50 @@ export class Agent {
           maxTokens: this.options.maxTokens,
         });
       }) as any,
+      // 安全防线：在发给 LLM 前裁剪超大上下文
+      transformContext: async (messages) => {
+        // 粗略估算 token 数（每条消息的文本内容）
+        let totalEstimate = 0;
+        for (const msg of messages) {
+          if (msg.role === "user" && typeof msg.content === "string") {
+            totalEstimate += msg.content.length / 3;
+          } else if (msg.role === "assistant") {
+            for (const part of (msg as any).content ?? []) {
+              if (part.type === "text") totalEstimate += (part.text?.length ?? 0) / 3;
+            }
+          } else if (msg.role === "toolResult") {
+            for (const part of (msg as any).content ?? []) {
+              if (part.type === "text") totalEstimate += (part.text?.length ?? 0) / 3;
+            }
+          }
+        }
+
+        // 如果估算 token 数超过上下文窗口的 80%，从前面丢弃消息
+        const limit = contextWindow * 0.8;
+        if (totalEstimate > limit && messages.length > 2) {
+          logger.warn({ totalEstimate: Math.round(totalEstimate), limit: Math.round(limit), messageCount: messages.length }, "transformContext: trimming oversized context");
+          // 保留最后 N 条直到 token 数低于限制
+          let kept = 0;
+          let keptTokens = 0;
+          for (let i = messages.length - 1; i >= 0; i--) {
+            const msg = messages[i]!;
+            let msgTokens = 0;
+            if (msg.role === "user" && typeof msg.content === "string") {
+              msgTokens = msg.content.length / 3;
+            } else if (msg.role === "assistant" || msg.role === "toolResult") {
+              for (const part of (msg as any).content ?? []) {
+                if (part.type === "text") msgTokens += (part.text?.length ?? 0) / 3;
+              }
+            }
+            if (keptTokens + msgTokens > limit && kept >= 2) break;
+            keptTokens += msgTokens;
+            kept++;
+          }
+          return messages.slice(-kept);
+        }
+
+        return messages;
+      },
     });
 
     piAgent.setModel(model);
@@ -606,7 +653,35 @@ export class Agent {
     }
   }
 
+  /** 截断超大消息内容，保留前后部分 */
+  private truncateOversizedMessages(messages: ChatMessage[], maxTokensPerMessage: number): ChatMessage[] {
+    return messages.map((msg) => {
+      const tokens = estimateMessageTokens(msg);
+      if (tokens <= maxTokensPerMessage) return msg;
+
+      // 只截断 tool result 和 assistant 消息中的超大内容
+      if (msg.role === "tool" && typeof msg.content === "string") {
+        const maxChars = maxTokensPerMessage * 3; // 粗略估算: ~3 chars/token
+        const truncated = msg.content.slice(0, maxChars) + `\n\n...[truncated: original ~${Math.round(tokens / 1000)}K tokens]`;
+        logger.debug({ role: msg.role, originalTokens: tokens, maxTokens: maxTokensPerMessage }, "Truncated oversized message");
+        return { ...msg, content: truncated };
+      }
+
+      if (msg.role === "assistant" && typeof msg.content === "string" && msg.content) {
+        const maxChars = maxTokensPerMessage * 3;
+        const truncated = msg.content.slice(0, maxChars) + `\n\n...[truncated: original ~${Math.round(tokens / 1000)}K tokens]`;
+        return { ...msg, content: truncated };
+      }
+
+      return msg;
+    });
+  }
+
   private async maybeCompactHistory(history: SessionData): Promise<void> {
+    // 第一步：截断超大的单条消息（如浏览器返回的 HTML）
+    const maxPerMessage = Math.floor(this.options.compactionThreshold * 0.3); // 单条消息最多占阈值的 30%
+    history.messages = this.truncateOversizedMessages(history.messages, maxPerMessage);
+
     const tokens = estimateMessagesTokens(history.messages);
     if (tokens <= this.options.compactionThreshold) return;
 
@@ -615,8 +690,18 @@ export class Agent {
     try {
       const keepRecent = Math.min(10, Math.floor(history.messages.length / 2));
       const toCompact = history.messages.slice(0, -keepRecent);
-      const toKeep = history.messages.slice(-keepRecent);
-      if (toCompact.length === 0) return;
+      let toKeep = history.messages.slice(-keepRecent);
+      if (toCompact.length === 0) {
+        // 所有消息都在"保留"部分但仍超阈值 → 强制裁剪
+        const pruned = pruneHistoryForContextShare({
+          messages: history.messages,
+          maxContextTokens: this.options.compactionThreshold,
+          maxHistoryShare: 0.8,
+        });
+        history.messages = pruned.messages;
+        logger.info({ dropped: pruned.droppedMessages, kept: pruned.messages.length }, "Force-pruned oversized kept messages");
+        return;
+      }
 
       const summary = await summarizeInStages(toCompact, {
         provider: this.options.provider,
@@ -628,7 +713,21 @@ export class Agent {
 
       history.summary = summary;
       history.messages = toKeep;
-      logger.info({ compacted: toCompact.length, kept: toKeep.length, summaryLength: summary.length }, "History compacted");
+
+      // 检查保留部分是否仍然超阈值
+      const keptTokens = estimateMessagesTokens(toKeep);
+      if (keptTokens > this.options.compactionThreshold) {
+        toKeep = this.truncateOversizedMessages(toKeep, maxPerMessage);
+        const pruned = pruneHistoryForContextShare({
+          messages: toKeep,
+          maxContextTokens: this.options.compactionThreshold,
+          maxHistoryShare: 0.8,
+        });
+        history.messages = pruned.messages;
+        logger.info({ keptTokens, dropped: pruned.droppedMessages }, "Post-compaction pruning applied");
+      }
+
+      logger.info({ compacted: toCompact.length, kept: history.messages.length, summaryLength: summary.length }, "History compacted");
     } catch (error) {
       logger.error({ error }, "Failed to compact history");
       const pruned = pruneHistoryForContextShare({
