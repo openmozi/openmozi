@@ -117,11 +117,31 @@ program
 
       // 检查提供商
       console.log("📦 模型提供商:");
-      const providers = ["deepseek", "doubao", "zhipu", "dashscope", "kimi", "stepfun", "minimax", "modelscope"] as const;
-      for (const id of providers) {
+      const chinaProviders = ["deepseek", "doubao", "zhipu", "dashscope", "kimi", "stepfun", "minimax", "modelscope"] as const;
+      for (const id of chinaProviders) {
         const providerConfig = config.providers[id];
         const status = providerConfig?.apiKey ? "✅ 已配置" : "⬜ 未配置";
         console.log(`   ${id}: ${status}`);
+      }
+
+      // 检查自定义和海外提供商
+      const extraProviders = ["openai", "openrouter", "together", "groq", "ollama", "vllm"] as const;
+      for (const id of extraProviders) {
+        const providerConfig = config.providers[id];
+        if (providerConfig) {
+          const status = (providerConfig as any).apiKey || id === "ollama" || id === "vllm" ? "✅ 已配置" : "⬜ 未配置";
+          console.log(`   ${id}: ${status}`);
+        }
+      }
+      if (config.providers["custom-openai"]) {
+        const c = config.providers["custom-openai"] as Record<string, unknown>;
+        const modelCount = Array.isArray(c.models) ? c.models.length : 0;
+        console.log(`   custom-openai: ✅ 已配置 (${c.baseUrl}, ${modelCount} 个模型)`);
+      }
+      if (config.providers["custom-anthropic"]) {
+        const c = config.providers["custom-anthropic"] as Record<string, unknown>;
+        const modelCount = Array.isArray(c.models) ? c.models.length : 0;
+        console.log(`   custom-anthropic: ✅ 已配置 (${c.baseUrl}, ${modelCount} 个模型)`);
       }
 
       // 检查通道
